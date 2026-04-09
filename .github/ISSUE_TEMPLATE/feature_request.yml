@@ -1,0 +1,58 @@
+name: Feature Request
+description: Solicitar una nueva funcionalidad
+title: "[FEATURE] "
+labels: ["enhancement"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Descripción de la Funcionalidad
+        Describe claramente qué funcionalidad necesitas.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema que resuelve
+      description: Qué problema del negocio resuelve esta funcionalidad
+      placeholder: |
+        Este feature resolvería el problema de...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solución propuesta
+      description: Cómo debería funcionar
+      placeholder: |
+        La solución debería...
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups o referencias
+      description: Si tienes mockups o referencias visuales
+      placeholder: |
+        [Arrastra o pega imágenes aquí]
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridad
+      options:
+        - Alta
+        - Media
+        - Baja
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Información adicional
+      description: Cualquier contexto adicional relevante
+      placeholder: |
+        Contexto adicional...

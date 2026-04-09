@@ -1,0 +1,48 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'production' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Railway Login
+        run: railway login --token ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Railway Deploy Backend
+        run: railway up --service backend
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+
+      - name: Railway Deploy Frontend Admin
+        run: railway up --service frontend-admin
+        working-directory: frontend-admin
+
+      - name: Railway Deploy Frontend Public
+        run: railway up --service frontend-public
+        working-directory: frontend-public
+
+      - name: Get Railway URL
+        run: railway status

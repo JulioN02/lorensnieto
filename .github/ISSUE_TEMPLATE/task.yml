@@ -1,0 +1,49 @@
+name: Task
+description: Tarea de desarrollo
+title: "[TASK] "
+labels: ["task"]
+assignees: []
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción
+      description: Describe la tarea
+      placeholder: |
+        Esta tarea incluye...
+    validations:
+      required: true
+
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Criterios de aceptación
+      description: Cuándo se considera completada
+      placeholder: |
+        - [ ] Criterio 1
+        - [ ] Criterio 2
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Módulo
+      options:
+        - Backend
+        - Frontend Admin
+        - Frontend Público
+        - Base de datos
+        - Documentación
+        - DevOps
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridad
+      options:
+        - Alta
+        - Media
+        - Baja
+    validations:
+      required: true
