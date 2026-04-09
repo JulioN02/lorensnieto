@@ -114,19 +114,4 @@ authRouter.get(
   })
 );
 
-// ============================================
-// GET /api/auth/csrf-token (para formularios)
-// ============================================
-
-authRouter.get(
-  '/csrf-token',
-  requireAuth,
-  (req, res) => {
-    res.json({
-      success: true,
-      data: {
-        csrfToken: req.csrfToken?.() ?? '',
-      },
-    });
-  }
-);
+// CSRF protection via SameSite cookie es suficiente con httpOnly

@@ -77,7 +77,7 @@ publicRouter.get(
   '/properties/:id',
   asyncHandler(async (req, res) => {
     const property = await prisma.property.findUnique({
-      where: { id: req.params['id'], active: true },
+      where: { id: String(req.params['id']), active: true },
       include: {
         media: {
           where: { mediaType: 'img' },
@@ -166,7 +166,7 @@ publicRouter.get(
   '/services/:id',
   asyncHandler(async (req, res) => {
     const service = await prisma.service.findUnique({
-      where: { id: req.params['id'], active: true },
+      where: { id: String(req.params['id']), active: true },
       include: {
         media: {
           where: { mediaType: 'img' },
