@@ -1,0 +1,45 @@
+# Dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# Entorno
+.env
+.env.local
+.env.*.local
+
+# Builds
+dist/
+build/
+*.tsbuildinfo
+
+# Uploads (temporales)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test
+coverage/
+
+# Docker
+.docker/
+
+# Prisma
+backend/prisma/migrations/**/migration_lock.toml
+
+# Railway
+.cache/
