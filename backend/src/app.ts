@@ -3,15 +3,15 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import session from 'express-session';
-import pg from 'connect-pg-simple';
-import nodemailer from 'nodemailer';
+import connectPgSimple from 'connect-pg-simple';
+import pg from 'pg';
 import { config } from './config/index.js';
 import { errorHandler, notFoundHandler, attachUser } from './middleware/index.js';
-import { prisma } from './config/database.js';
 
 // Routers
 import { authRouter } from './api/public/auth.js';
 import { publicRouter } from './api/public/index.js';
+import { adminRouter } from './api/admin/index.js';
 
 const app = express();
 
@@ -41,12 +41,16 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // SESIONES con PostgreSQL
 // ============================================
 
-const PgSession = pg(session);
+const pgPool = new pg.Pool({
+  connectionString: config.database.url,
+});
+
+const PgSession = connectPgSimple(session);
 
 app.use(
   session({
     store: new PgSession({
-      pool: (prisma as unknown as { $connect: () => Promise<unknown> }).$connect?.() as never,
+      pool: pgPool,
       createTableIfMissing: true,
       tableName: 'session',
     }),
