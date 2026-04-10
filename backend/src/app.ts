@@ -76,6 +76,14 @@ app.use(attachUser);
 app.use('/api/auth', authRouter);
 app.use('/api/public', publicRouter);
 
+// Rutas admin (requieren autenticación)
+app.use('/api/admin', adminRouter);
+
+// Servir archivos subidos estáticamente
+import expressStatic from 'serve-static';
+import path from 'path';
+app.use('/uploads', expressStatic(path.join(process.cwd(), config.upload.dir)));
+
 // Health check
 app.get('/api/health', (_req, res) => {
   res.json({

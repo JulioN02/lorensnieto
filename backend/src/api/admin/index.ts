@@ -1,7 +1,16 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../middleware/index.js';
 import { requireAuth, requireRole } from '../../middleware/auth.js';
+import { uploadPropertyGallery, uploadServiceGallery } from '../../middleware/upload.js';
 import { prisma } from '../../config/database.js';
+import {
+  createPropertyHandler,
+  updatePropertyHandler,
+  deletePropertyHandler,
+  createServiceHandler,
+  updateServiceHandler,
+  deleteServiceHandler,
+} from '../../controllers/index.js';
 
 export const adminRouter = Router();
 
@@ -58,7 +67,7 @@ adminRouter.get(
 );
 
 // ============================================
-// GET /api/admin/properties - Listar propiedades
+// PROPIEDADES — CRUD Admin
 // ============================================
 
 adminRouter.get(
@@ -95,8 +104,28 @@ adminRouter.get(
   })
 );
 
+adminRouter.post(
+  '/properties',
+  requireRole('admin'),
+  uploadPropertyGallery,
+  asyncHandler(createPropertyHandler)
+);
+
+adminRouter.put(
+  '/properties/:id',
+  requireRole('admin'),
+  uploadPropertyGallery,
+  asyncHandler(updatePropertyHandler)
+);
+
+adminRouter.delete(
+  '/properties/:id',
+  requireRole('admin'),
+  asyncHandler(deletePropertyHandler)
+);
+
 // ============================================
-// GET /api/admin/services - Listar servicios
+// SERVICIOS — CRUD Admin
 // ============================================
 
 adminRouter.get(
@@ -130,8 +159,28 @@ adminRouter.get(
   })
 );
 
+adminRouter.post(
+  '/services',
+  requireRole('admin'),
+  uploadServiceGallery,
+  asyncHandler(createServiceHandler)
+);
+
+adminRouter.put(
+  '/services/:id',
+  requireRole('admin'),
+  uploadServiceGallery,
+  asyncHandler(updateServiceHandler)
+);
+
+adminRouter.delete(
+  '/services/:id',
+  requireRole('admin'),
+  asyncHandler(deleteServiceHandler)
+);
+
 // ============================================
-// GET /api/admin/leads - Listar leads
+// LEADS — Listar (CRUD completo en fase posterior)
 // ============================================
 
 adminRouter.get(
@@ -169,7 +218,7 @@ adminRouter.get(
 );
 
 // ============================================
-// GET /api/admin/reservations - Listar reservas
+// RESERVATIONS — Listar (CRUD completo en fase posterior)
 // ============================================
 
 adminRouter.get(
@@ -204,7 +253,7 @@ adminRouter.get(
 );
 
 // ============================================
-// GET /api/admin/partner/summary - Solo Socio Técnico
+// PARTNER — Solo Socio Técnico
 // ============================================
 
 adminRouter.get(
