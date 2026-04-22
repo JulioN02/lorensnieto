@@ -96,59 +96,6 @@ LeadNote (notas internas)
 | **Admin** | Lorenda Nieto | Panel administrativo completo |
 | **Partner** | Socio Técnico | Solo vista financiera/resumen |
 
-## Primeros Pasos
-
-### Requisitos
-
-- Node.js 20+
-- PostgreSQL 14+
-- npm o yarn
-
-### Instalación
-
-```bash
-# Clonar repositorio
-git clone https://github.com/JulioN02/lorensnieto.git
-cd lorensnieto
-
-# Instalar dependencias
-npm install
-
-# Configurar variables de entorno
-cp backend/.env.example backend/.env
-# Editar backend/.env con tu DATABASE_URL
-
-# Migrar base de datos
-npm run db:migrate
-
-# (Opcional) Poblar con datos de prueba
-npm run db:seed
-
-# Iniciar desarrollo
-npm run dev
-```
-
-### Variables de Entorno
-
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/lorensnieto"
-SESSION_SECRET="tu-secret-para-sesiones"
-NODE_ENV="development"
-```
-
-## Scripts Disponibles
-
-```bash
-npm run dev          # Iniciar backend + frontend admin en desarrollo
-npm run dev:backend # Solo backend
-npm run dev:admin   # Solo frontend admin
-npm run build       # Compilar TypeScript
-npm run test        # Ejecutar tests
-npm run db:migrate  # Migraciones Prisma
-npm run db:seed     # Semillas de base de datos
-npm run db:studio   # GUI de Prisma
-```
-
 ## API Endpoints Principales
 
 ### Autenticación
