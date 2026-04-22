@@ -4,106 +4,59 @@ Sistema de gestión integral para empresa inmobiliaria en Valledupar, Colombia. 
 
 ## Estado del Proyecto
 
-**En desarrollo activo** — Backend API REST completado, Frontend administrativo en construcción.
+**Desarrollo activo** — Backend API funcional, Frontend Admin en construcción.
 
 ## Stack Tecnológico
 
-| Componente | Tecnología |
-|------------|------------|
+| Capa | Tecnología |
+|------|-----------|
 | Backend | Node.js + Express + TypeScript |
 | Base de datos | PostgreSQL + Prisma ORM |
 | Frontend Admin | React + TypeScript + Vite |
 | Frontend Público | HTML/CSS/JavaScript |
-| Autenticación | Sesiones PostgreSQL (express-session) |
+| CSS Admin | Tailwind CSS |
+| State Admin | Zustand |
+| Autenticación | express-session + bcrypt |
 | Validación | Zod |
+| Upload | multer + sharp |
 | Testing | Jest + Supertest |
-| Seguridad | Helmet, rate-limiting, CORS |
 
 ## Estructura del Proyecto
 
 ```
 lorensnieto/
-├── backend/                 # API REST
+├── backend/
 │   ├── src/
-│   │   ├── api/            # Rutas (admin, public)
-│   │   ├── controllers/    # Controladores
-│   │   ├── services/       # Lógica de negocio
-│   │   ├── repositories/   # Acceso a datos
-│   │   ├── models/         # Schema Prisma + Zod
-│   │   ├── middleware/     # Auth, upload, helpers
-│   │   ├── jobs/           # Tareas programadas
-│   │   ├── pdf/            # Generación de documentos
-│   │   └── utils/          # Utilidades
+│   │   ├── api/           # Rutas (admin, public, auth)
+│   │   ├── controllers/   # Controladores
+│   │   ├── services/      # Lógica de negocio
+│   │   ├── repositories/  # Acceso a datos
+│   │   ├── models/schemas # Schemas Zod
+│   │   ├── middleware/    # Auth, upload, errors, rate-limit
+│   │   └── config/        # DB, env
 │   ├── prisma/
-│   │   └── schema.prisma   # Modelo de datos
-│   └── tests/              # Tests de API
-├── frontend-admin/          # Panel administrativo (React)
-├── frontend-public/         # Sitio web público
-└── docs/                    # Documentación técnica
+│   │   └── schema.prisma  # 14 modelos de datos
+│   └── tests/
+├── frontend-admin/         # Panel administrativo (React)
+├── frontend-public/        # Sitio web público
+└── docs/
 ```
 
-## Funcionalidades Implementadas
-
-### Backend API
-
-- [x] **Autenticación y autorización** — Login con sesiones PostgreSQL, roles (admin, partner)
-- [x] **Gestión de Propiedades** — CRUD completo (casas de campo, apartamentos)
-- [x] **Gestión de Servicios** — CRUD completo (alimentación, limpieza, otros)
-- [x] **Sistema de Leads** — Captura y seguimiento de solicitudes de clientes
-- [x] **Reservas** — Control de estados (pendiente, confirmada, en servicio, finalizada, cancelada)
-- [x] **Contrataciones** — Servicios contratados por clientes
-- [x] **Pagos** — Registro de abonos y pagos totales
-- [x] **Panel Socio Técnico** — Resumen financiero mensual con cálculos de comisiones
-- [x] **Carga de Medios** — Upload de imágenes con procesamiento (sharp)
-- [x] **Seguridad** — Helmet, rate limiting, validación Zod, sanitización de inputs
-- [x] **Tests** — Suite de tests API con Jest y Supertest
-
-### Frontend Admin (en desarrollo)
-
-- [x] Estructura base del proyecto React + TypeScript + Vite
-- [x] Sistema de rutas
-- [x] Store de estado (Zustand)
-- [x] Componentes base
-- [ ] Conexión con API
-- [ ] Vistas completas
-
-### Frontend Público (en desarrollo)
-
-- [x] Estructura base HTML/CSS/JS
-- [ ] Páginas completas
-- [ ] Formulario de contacto
-
-## Modelo de Datos
-
-```
-User ─────┐
-          │
-Property ─┼──── Lead ──── Reservation ──── Payment
-          │
-Service ──┴──── Contracting ──── ContractingService
-                      │
-                 PartnerPeriod ──── AlertLog
-
-Settings (configuración global)
-Media (imágenes/videos de propiedades y servicios)
-LeadNote (notas internas)
-```
-
-## Roles del Sistema
-
-| Rol | Descripción | Acceso |
-|-----|-------------|--------|
-| **Admin** | Lorenda Nieto | Panel administrativo completo |
-| **Partner** | Socio Técnico | Solo vista financiera/resumen |
-
-## API Endpoints Principales
+## Backend API — Funcional
 
 ### Autenticación
 - `POST /api/auth/login` — Iniciar sesión
 - `POST /api/auth/logout` — Cerrar sesión
 - `GET /api/auth/me` — Usuario actual
 
-### Admin (requiere autenticación)
+### Catálogo Público (solo lectura)
+- `GET /api/public/properties?type=casa_campo|apartamento` — Listar propiedades activas
+- `GET /api/public/properties/:id` — Detalle de propiedad
+- `GET /api/public/services` — Listar servicios activos
+- `GET /api/public/services/:id` — Detalle de servicio
+- `POST /api/public/leads` — Enviar solicitud
+
+### Panel Admin (requiere autenticación)
 - `GET /api/admin/me` — Perfil del usuario
 - `GET /api/admin/dashboard` — Métricas generales
 - `GET/POST/PUT/DELETE /api/admin/properties` — CRUD propiedades
@@ -111,6 +64,55 @@ LeadNote (notas internas)
 - `GET /api/admin/leads` — Lista de solicitudes
 - `GET /api/admin/reservations` — Lista de reservas
 - `GET /api/admin/partner/summary` — Resumen financiero (solo partner)
+
+## Modelo de Datos
+
+```
+User
+Property ──┬── Lead ──── Reservation ──── Payment
+            │
+Service ────┴── Contracting ──── ContractingService
+                     │
+                PartnerPeriod ──── AlertLog
+
+Settings (configuración)
+Media (imágenes/videos)
+LeadNote (notas internas)
+```
+
+## Fases de Desarrollo
+
+| Fase | Descripción | Estado |
+|------|-------------|--------|
+| 0 | Fundamentos Backend — Express, Prisma, auth, middleware | ✅ |
+| 1 | Rutas Públicas — Catálogo de propiedades y servicios | ✅ |
+| 2 | Gestión Admin — CRUD propiedades y servicios con upload | ✅ |
+| 3 | Sitio Web Público | 🔲 |
+| 4 | Leads y Reservas | 🔲 |
+| 5 | Documentos PDF | 🔲 |
+| 6 | Panel Socio Técnico | 🔲 |
+| 7 | Métricas y Reportes | 🔲 |
+| 8 | Deploy y Pulido | 🔲 |
+
+## Frontend Admin
+
+| Componente | Estado |
+|------------|--------|
+| Proyecto React + TypeScript + Vite | ✅ |
+| Tailwind CSS configurado | ✅ |
+| Zustand store | ✅ |
+| React Router + layout base | ✅ |
+| Conexión con API | 🔲 |
+| Vistas completas | 🔲 |
+
+## Frontend Público
+
+| Componente | Estado |
+|------------|--------|
+| Estructura HTML/CSS/JS base | ✅ |
+| Cliente API JavaScript | 🔲 |
+| Páginas de catálogo | 🔲 |
+| Formulario de solicitud | 🔲 |
 
 ## Licencia
 
