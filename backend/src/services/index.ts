@@ -11,3 +11,24 @@ export {
   updateServiceWithMedia,
   removeService,
 } from './service.service.js';
+
+export {
+  getReservationOrFail,
+  listReservations,
+  listReservationsByProperty,
+  checkAvailability,
+  calculatePrice,
+  createReservation,
+  updateReservation,
+  cancelReservation,
+  removeReservation,
+} from './reservation.service.js';
+
+export {
+  getLeadOrFail,
+  listLeads,
+  updateLeadStatusService,
+  addLeadNote,
+  convertLeadToReservation,
+  discardLead,
+} from './lead.service.js';

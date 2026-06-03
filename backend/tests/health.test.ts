@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from '@jest/globals';
 import request from 'supertest';
-import { app } from '../../src/app';
+import { app } from '../src/app';
 
 describe('Health Check', () => {
   it('GET /api/health should return 200', async () => {
