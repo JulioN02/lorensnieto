@@ -18,7 +18,7 @@ const navigationItems: NavItem[] = [
   { to: '/inbox', label: 'Bandeja de Entrada', icon: '📬', roles: [UserRole.Admin] },
   { to: '/reservations', label: 'Reservas', icon: '📅', roles: [UserRole.Admin] },
   { to: '/reports', label: 'Reportes', icon: '📈', roles: [UserRole.Admin] },
-  { to: '/partner', label: 'Socio Técnico', icon: '🤝', roles: [UserRole.Partner] },
+  { to: '/partner', label: 'Socio Técnico', icon: '🤝', roles: [UserRole.Admin, UserRole.Partner] },
   { to: '/settings', label: 'Configuración', icon: '⚙️', roles: [UserRole.Admin] },
 ]
 
@@ -30,12 +30,13 @@ const roleLabels: Record<string, string> = {
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [partnerAlertCount, setPartnerAlertCount] = useState(0)
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const fetchUnread = async () => {
+    const fetchBadges = async () => {
       try {
         const { data } = await api.get('/admin/leads?status=nueva')
         if (data.success && data.unreadCount !== undefined) {
@@ -44,10 +45,20 @@ export function Layout() {
       } catch {
         // Silently fail — badge is non-critical
       }
+
+      // Fetch partner alert count
+      try {
+        const res = await api.get('/api/partner/summary')
+        if (res.data.success && res.data.data?.activeAlerts !== undefined) {
+          setPartnerAlertCount(res.data.data.activeAlerts)
+        }
+      } catch {
+        // Silently fail for partner route
+      }
     }
-    fetchUnread()
+    fetchBadges()
     // Refresh every 30 seconds
-    const interval = setInterval(fetchUnread, 30000)
+    const interval = setInterval(fetchBadges, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -110,6 +121,11 @@ export function Layout() {
                     {item.to === '/inbox' && unreadCount > 0 && (
                       <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
                         {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                    {item.to === '/partner' && partnerAlertCount > 0 && (
+                      <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+                        {partnerAlertCount > 99 ? '99+' : partnerAlertCount}
                       </span>
                     )}
                   </NavLink>

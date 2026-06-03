@@ -7,3 +7,14 @@ export { serviceService } from './service.service'
 export { reservationService } from './reservation.service'
 export { leadService } from './lead.service'
 export { paymentService } from './payment.service'
+export {
+  getPartnerSummary,
+  getPartnerPeriods,
+  getPartnerPeriod,
+  confirmPayment,
+  registerPartialPayment,
+  disputePeriod,
+  getAlerts,
+  getPartnerSettings,
+  updatePartnerSettings,
+} from './partner.service'

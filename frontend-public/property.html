@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Detalle de propiedad — Lorens Nieto" />
+  <title>Cargando... — Lorens Nieto</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/api.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <div id="header"></div>
+
+  <a href="https://wa.me/573001234567?text=Hola%2C%20quiero%20informaci%C3%B3n" target="_blank" rel="noopener" class="whatsapp-float" aria-label="WhatsApp">
+    💬
+  </a>
+
+  <main class="main-content">
+    <div class="container" style="padding-top:2rem;padding-bottom:2rem;">
+      <!-- Loading -->
+      <div id="loadingState" class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Cargando propiedad...</p>
+      </div>
+
+      <!-- Error -->
+      <div id="errorState" class="error-state" style="display:none;">
+        <div class="error-state-icon">⚠️</div>
+        <h3>Propiedad no encontrada</h3>
+        <p id="errorMessage">La propiedad que buscas no existe o ha sido removida.</p>
+        <a href="casas-campo.html" class="btn btn-primary mt-2">Ver todas las propiedades</a>
+      </div>
+
+      <!-- Content -->
+      <div id="content" style="display:none;">
+        <div class="breadcrumb">
+          <a href="index.html">Inicio</a>
+          <span class="separator">/</span>
+          <a href="casas-campo.html" id="breadcrumbType">Propiedades</a>
+          <span class="separator">/</span>
+          <span id="breadcrumbName"></span>
+        </div>
+
+        <!-- Gallery -->
+        <div class="detail-gallery">
+          <img id="gallery-main" class="detail-main-img" src="" alt="" />
+          <div id="gallery-thumbs" class="detail-thumbs"></div>
+        </div>
+
+        <div class="detail-info">
+          <div>
+            <!-- Header -->
+            <div class="detail-header">
+              <div>
+                <h1 id="propertyName"></h1>
+                <span id="propertyBadge" class="detail-badge"></span>
+              </div>
+              <div class="price-accent" id="propertyPrice"></div>
+            </div>
+
+            <div class="detail-meta-row" id="propertyMeta">
+              <div class="detail-meta-item">📍 <span id="propertyZone"></span></div>
+              <div class="detail-meta-item">📍 <span id="propertyAddress"></span></div>
+              <div class="detail-meta-item">👥 <span id="propertyCapacity"></span></div>
+              <div class="detail-meta-item">🛏 <span id="propertyRooms"></span></div>
+            </div>
+
+            <!-- Description -->
+            <div class="detail-section">
+              <h3>Descripción</h3>
+              <p id="propertyDescription" class="detail-description"></p>
+            </div>
+          </div>
+
+          <div>
+            <!-- Amenities -->
+            <div class="detail-section">
+              <h3>Comodidades</h3>
+              <div id="propertyAmenities" class="detail-amenities"></div>
+            </div>
+
+            <!-- Rules -->
+            <div class="detail-section">
+              <h3>Reglas</h3>
+              <ol id="propertyRules" class="detail-rules"></ol>
+            </div>
+
+            <!-- Actions -->
+            <div class="detail-actions">
+              <button class="btn btn-primary btn-lg" id="btnRequestInfo">📋 Solicitar Información</button>
+              <a href="https://wa.me/573001234567" target="_blank" rel="noopener" class="btn btn-whatsapp btn-lg">💬 Contactar por WhatsApp</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+
+      if (!id) {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'block';
+        document.getElementById('errorMessage').textContent = 'No se especificó una propiedad.';
+        return;
+      }
+
+      const $ = (sel) => document.getElementById(sel);
+
+      async function loadProperty() {
+        try {
+          const res = await API.getProperty(id);
+
+          if (!res.success || !res.data) {
+            throw new Error(res.error || 'Propiedad no encontrada');
+          }
+
+          const p = res.data;
+
+          // Update page title
+          document.title = `${p.name} — Lorens Nieto`;
+
+          // Breadcrumb
+          if (p.type === 'casa_campo') {
+            $('breadcrumbType').textContent = 'Casas de Campo';
+            $('breadcrumbType').href = 'casas-campo.html';
+          } else {
+            $('breadcrumbType').textContent = 'Apartamentos';
+            $('breadcrumbType').href = 'apartamentos.html';
+          }
+          $('breadcrumbName').textContent = p.name;
+
+          // Name & badge
+          $('propertyName').textContent = p.name;
+          $('propertyBadge').textContent = p.type === 'casa_campo' ? 'Casa de Campo' : 'Apartamento';
+
+          // Price
+          $('propertyPrice').textContent = `${API.formatPrice(Number(p.priceNight))}/noche`;
+
+          // Meta
+          $('propertyZone').textContent = p.zone;
+          $('propertyAddress').textContent = p.address;
+          $('propertyCapacity').textContent = `${p.capacity} personas`;
+          $('propertyRooms').textContent = p.rooms ? `${p.rooms} habitaciones` : '—';
+
+          // Description
+          $('propertyDescription').textContent = p.description;
+
+          // Amenities
+          const amenitiesContainer = $('propertyAmenities');
+          if (p.amenities && p.amenities.length > 0) {
+            amenitiesContainer.innerHTML = p.amenities.map((a) => `<span class="amenity-tag">${escapeHtml(a)}</span>`).join('');
+          } else {
+            amenitiesContainer.innerHTML = '<p class="text-muted">No se especificaron comodidades.</p>';
+          }
+
+          // Rules
+          const rulesContainer = $('propertyRules');
+          if (p.rules && p.rules.length > 0) {
+            rulesContainer.innerHTML = p.rules.map((r) => `<li>${escapeHtml(r)}</li>`).join('');
+          } else {
+            rulesContainer.innerHTML = '<li class="text-muted">No se especificaron reglas.</li>';
+          }
+
+          // Gallery
+          const mainImg = $('gallery-main');
+          const thumbsContainer = $('gallery-thumbs');
+
+          if (p.media && p.media.length > 0) {
+            const images = p.media.filter((m) => m.mediaType === 'img');
+            if (images.length > 0) {
+              // Use the first image's actual URL or the placeholder
+              const firstImg = images[0].url;
+              mainImg.src = firstImg;
+              mainImg.alt = p.name;
+              mainImg.onerror = function () {
+                this.src = 'https://placehold.co/800x500/1e3a5f/c9a84c?text=Sin+Imagen';
+              };
+
+              thumbsContainer.innerHTML = images
+                .map(
+                  (img, idx) =>
+                    `<img src="${img.url}" alt="${escapeHtml(p.name)} - Foto ${idx + 1}" class="detail-thumb ${idx === 0 ? 'active' : ''}" data-full="${img.url}" loading="lazy" onerror="this.src='https://placehold.co/80x60/1e3a5f/c9a84c?text=N/A'" />`
+                )
+                .join('');
+
+              initGallery();
+            } else {
+              mainImg.src = 'https://placehold.co/800x500/1e3a5f/c9a84c?text=Sin+Imagen';
+              mainImg.alt = p.name;
+            }
+          } else {
+            mainImg.src = 'https://placehold.co/800x500/1e3a5f/c9a84c?text=Sin+Imagen';
+            mainImg.alt = p.name;
+          }
+
+          // Request info button
+          $('btnRequestInfo').addEventListener('click', () => {
+            openLeadForm({
+              propertyId: p.id,
+              propertyName: p.name,
+              title: 'Solicitar Información',
+            });
+          });
+
+          // WhatsApp link with property context
+          const waBtn = document.querySelector('.detail-actions .btn-whatsapp');
+          if (waBtn) {
+            waBtn.href = `https://wa.me/573001234567?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20${encodeURIComponent(p.name)}`;
+          }
+
+          // Show content
+          $('loadingState').style.display = 'none';
+          $('content').style.display = 'block';
+        } catch (err) {
+          $('loadingState').style.display = 'none';
+          $('errorState').style.display = 'block';
+          $('errorMessage').textContent = err.message || 'La propiedad no se pudo cargar.';
+        }
+      }
+
+      loadProperty();
+    });
+  </script>
+</body>
+</html>

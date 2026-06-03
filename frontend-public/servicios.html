@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Servicios en Valledupar — Alimentación, limpieza y más con Lorens Nieto." />
+  <title>Servicios — Lorens Nieto</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/api.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <div id="header" data-page="servicios"></div>
+
+  <a href="https://wa.me/573001234567?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20servicios" target="_blank" rel="noopener" class="whatsapp-float" aria-label="WhatsApp">
+    💬
+  </a>
+
+  <main class="main-content">
+    <!-- Page Header -->
+    <section class="page-header">
+      <div class="container">
+        <div class="breadcrumb">
+          <a href="index.html">Inicio</a>
+          <span class="separator">/</span>
+          <span>Servicios</span>
+        </div>
+        <h1>Servicios</h1>
+        <p class="text-muted">Complementa tu experiencia con nuestros servicios adicionales</p>
+      </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="section" style="padding-top:0;">
+      <div class="container">
+        <div class="filters-bar">
+          <div class="filters-row">
+            <div class="filter-group">
+              <label>Clasificación</label>
+              <select id="filterClassification">
+                <option value="">Todas las clasificaciones</option>
+                <option value="alimentacion">Alimentación</option>
+                <option value="limpieza">Limpieza</option>
+                <option value="otros">Otros</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Buscar</label>
+              <input type="text" id="filterSearch" placeholder="Nombre, descripción..." />
+            </div>
+            <div class="filter-actions">
+              <button class="btn btn-primary" id="btnFilter">Filtrar</button>
+              <button class="btn btn-outline" id="btnClear">Limpiar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div id="resultsContainer">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Cargando servicios...</p>
+          </div>
+        </div>
+        <div id="paginationContainer"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="footer"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let currentPage = 1;
+
+      const container = document.getElementById('resultsContainer');
+      const paginationEl = document.getElementById('paginationContainer');
+      const filterClassification = document.getElementById('filterClassification');
+      const filterSearch = document.getElementById('filterSearch');
+      const btnFilter = document.getElementById('btnFilter');
+      const btnClear = document.getElementById('btnClear');
+
+      async function loadServices(page = 1) {
+        currentPage = page;
+
+        container.innerHTML = `
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Cargando servicios...</p>
+          </div>
+        `;
+        paginationEl.innerHTML = '';
+
+        const params = { page, limit: 12 };
+
+        if (filterClassification.value) params.classification = filterClassification.value;
+        if (filterSearch.value.trim()) params.search = filterSearch.value.trim();
+
+        try {
+          const res = await API.getServices(params);
+
+          if (!res.success) throw new Error(res.error || 'Error del servidor');
+
+          if (res.data.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">🔧</div>
+              <h3>No encontramos servicios</h3>
+              <p>No hay servicios que coincidan con tu búsqueda. Intenta con otros filtros.</p>
+              <button class="btn btn-primary mt-2 clear-filters-btn">Limpiar filtros</button>
+            </div>
+          `;
+          container.querySelector('.clear-filters-btn')?.addEventListener('click', () => btnClear.click());
+            return;
+          }
+
+          container.innerHTML = `<div class="cards-grid cols-2">${res.data.map(renderServiceCard).join('')}</div>`;
+
+          if (res.pagination) {
+            paginationEl.innerHTML = renderPagination(
+              res.pagination.page,
+              res.pagination.totalPages,
+              loadServices
+            );
+          }
+        } catch (err) {
+          container.innerHTML = `
+            <div class="error-state">
+              <div class="error-state-icon">⚠️</div>
+              <h3>Error al cargar</h3>
+              <p>${err.message || 'Ocurrió un error al cargar los servicios. Intenta de nuevo.'}</p>
+              <button class="btn btn-primary retry-btn">Reintentar</button>
+            </div>
+          `;
+          container.querySelector('.retry-btn')?.addEventListener('click', () => loadServices(1));
+        }
+      }
+
+      // Expose globally for inline onclick handlers (retry buttons)
+      window.loadServicios = loadServices;
+
+      btnFilter.addEventListener('click', () => loadServices(1));
+      btnClear.addEventListener('click', () => {
+        filterClassification.value = '';
+        filterSearch.value = '';
+        loadServices(1);
+      });
+
+      filterSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') loadServices(1);
+      });
+
+      loadServices(1);
+    });
+  </script>
+</body>
+</html>

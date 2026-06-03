@@ -14,6 +14,8 @@ import { ReservationDetailPage } from './pages/Reservations/ReservationDetailPag
 import { ReservationFormPage } from './pages/Reservations/ReservationFormPage'
 import { InboxPage } from './pages/Inbox/InboxPage'
 import { InboxDetailPage } from './pages/Inbox/InboxDetailPage'
+import { PartnerPage } from './pages/Partner/PartnerPage'
+import { PartnerPeriodDetailPage } from './pages/Partner/PartnerPeriodDetailPage'
 
 function AppRoutes() {
   const checkAuth = useAuthStore((state) => state.checkAuth)
@@ -44,6 +46,8 @@ function AppRoutes() {
         <Route path="/reservations/:id" element={<ReservationDetailPage />} />
         <Route path="/inbox" element={<InboxPage />} />
         <Route path="/inbox/:id" element={<InboxDetailPage />} />
+        <Route path="/partner" element={<PartnerPage />} />
+        <Route path="/partner/periods/:id" element={<PartnerPeriodDetailPage />} />
         <Route index element={<Navigate to="/dashboard" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

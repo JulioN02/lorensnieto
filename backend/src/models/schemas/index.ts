@@ -25,3 +25,6 @@ export type { LeadStatusUpdateInput, LeadNoteInput, LeadConvertInput } from './l
 
 export { paymentCreateSchema } from './payment.js';
 export type { PaymentCreateInput } from './payment.js';
+
+export { partnerPeriodUpdateSchema, partnerSettingsUpdateSchema } from './partner.js';
+export type { PartnerPeriodUpdateInput, PartnerSettingsUpdateInput } from './partner.js';

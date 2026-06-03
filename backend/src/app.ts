@@ -12,6 +12,7 @@ import { errorHandler, notFoundHandler, attachUser } from './middleware/index.js
 import { authRouter } from './api/public/auth.js';
 import { publicRouter } from './api/public/index.js';
 import { adminRouter } from './api/admin/index.js';
+import { partnerRouter } from './api/partner/index.js';
 
 const app = express();
 
@@ -78,6 +79,9 @@ app.use('/api/public', publicRouter);
 
 // Rutas admin (requieren autenticación)
 app.use('/api/admin', adminRouter);
+
+// Rutas partner (requieren autenticación)
+app.use('/api/partner', partnerRouter);
 
 // Servir archivos subidos estáticamente
 import expressStatic from 'serve-static';

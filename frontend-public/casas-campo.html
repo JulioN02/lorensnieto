@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Casas de campo en Valledupar — Encuentra la casa perfecta para tus momentos especiales con Lorens Nieto." />
+  <title>Casas de Campo — Lorens Nieto</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/api.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <div id="header" data-page="casas-campo"></div>
+
+  <a href="https://wa.me/573001234567?text=Hola%2C%20quiero%20informaci%C3%B3n%20sobre%20casas%20de%20campo" target="_blank" rel="noopener" class="whatsapp-float" aria-label="WhatsApp">
+    💬
+  </a>
+
+  <main class="main-content">
+    <!-- Page Header -->
+    <section class="page-header">
+      <div class="container">
+        <div class="breadcrumb">
+          <a href="index.html">Inicio</a>
+          <span class="separator">/</span>
+          <span>Casas de Campo</span>
+        </div>
+        <h1>Casas de Campo</h1>
+        <p class="text-muted">Encuentra la casa perfecta para tus momentos especiales en Valledupar</p>
+      </div>
+    </section>
+
+    <!-- Filters -->
+    <section class="section" style="padding-top:0;">
+      <div class="container">
+        <div class="filters-bar" id="filtersBar">
+          <div class="filters-row">
+            <div class="filter-group">
+              <label>Zona</label>
+              <select id="filterZone">
+                <option value="">Todas las zonas</option>
+                <option value="Norte">Norte</option>
+                <option value="Sur">Sur</option>
+                <option value="Centro">Centro</option>
+                <option value="Oriente">Oriente</option>
+                <option value="Occidente">Occidente</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Capacidad mínima</label>
+              <select id="filterCapacity">
+                <option value="">Cualquier capacidad</option>
+                <option value="2">2 personas</option>
+                <option value="4">4 personas</option>
+                <option value="6">6 personas</option>
+                <option value="8">8 personas</option>
+                <option value="10">10+ personas</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Buscar</label>
+              <input type="text" id="filterSearch" placeholder="Nombre, zona, descripción..." />
+            </div>
+            <div class="filter-actions">
+              <button class="btn btn-primary" id="btnFilter">Filtrar</button>
+              <button class="btn btn-outline" id="btnClear">Limpiar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div id="resultsContainer">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Cargando propiedades...</p>
+          </div>
+        </div>
+        <div id="paginationContainer"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="footer"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let currentPage = 1;
+
+      const container = document.getElementById('resultsContainer');
+      const paginationEl = document.getElementById('paginationContainer');
+      const filterZone = document.getElementById('filterZone');
+      const filterCapacity = document.getElementById('filterCapacity');
+      const filterSearch = document.getElementById('filterSearch');
+      const btnFilter = document.getElementById('btnFilter');
+      const btnClear = document.getElementById('btnClear');
+
+      async function loadProperties(page = 1) {
+        currentPage = page;
+
+        container.innerHTML = `
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Cargando propiedades...</p>
+          </div>
+        `;
+        paginationEl.innerHTML = '';
+
+        const params = { type: 'casa_campo', page, limit: 9 };
+
+        if (filterZone.value) params.zone = filterZone.value;
+        if (filterCapacity.value) params.capacity = filterCapacity.value;
+        if (filterSearch.value.trim()) params.search = filterSearch.value.trim();
+
+        try {
+          const res = await API.getProperties(params);
+
+          if (!res.success) throw new Error(res.error || 'Error del servidor');
+
+          if (res.data.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">🏡</div>
+              <h3>No encontramos casas de campo</h3>
+              <p>No hay propiedades que coincidan con tu búsqueda. Intenta con otros filtros.</p>
+              <button class="btn btn-primary mt-2 clear-filters-btn">Limpiar filtros</button>
+            </div>
+          `;
+          container.querySelector('.clear-filters-btn')?.addEventListener('click', () => btnClear.click());
+            return;
+          }
+
+          container.innerHTML = `<div class="cards-grid cols-3">${res.data.map(renderPropertyCard).join('')}</div>`;
+
+          if (res.pagination) {
+            paginationEl.innerHTML = renderPagination(
+              res.pagination.page,
+              res.pagination.totalPages,
+              loadProperties
+            );
+          }
+        } catch (err) {
+          container.innerHTML = `
+            <div class="error-state">
+              <div class="error-state-icon">⚠️</div>
+              <h3>Error al cargar</h3>
+              <p>${err.message || 'Ocurrió un error al cargar las propiedades. Intenta de nuevo.'}</p>
+              <button class="btn btn-primary retry-btn">Reintentar</button>
+            </div>
+          `;
+          container.querySelector('.retry-btn')?.addEventListener('click', () => loadProperties(1));
+        }
+      }
+
+      // Expose globally for inline onclick handlers (retry buttons)
+      window.loadCasaCampo = loadProperties;
+
+      btnFilter.addEventListener('click', () => loadProperties(1));
+      btnClear.addEventListener('click', () => {
+        filterZone.value = '';
+        filterCapacity.value = '';
+        filterSearch.value = '';
+        loadProperties(1);
+      });
+
+      // Enter key in search
+      filterSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') loadProperties(1);
+      });
+
+      loadProperties(1);
+    });
+  </script>
+</body>
+</html>

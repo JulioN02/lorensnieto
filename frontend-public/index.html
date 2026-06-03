@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Lorens Nieto — Encuentra casas de campo y apartamentos en Valledupar, Cesar. Tu mejor opción para momentos especiales." />
+  <title>Lorens Nieto — Casas de Campo y Apartamentos en Valledupar</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/api.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <!-- Header -->
+  <div id="header" data-page="inicio"></div>
+
+  <!-- WhatsApp Float -->
+  <a href="https://wa.me/573001234567?text=Hola%2C%20quiero%20informaci%C3%B3n" target="_blank" rel="noopener" class="whatsapp-float" aria-label="WhatsApp">
+    💬
+  </a>
+
+  <main class="main-content">
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-content">
+        <h1>Encuentra el lugar perfecto</h1>
+        <p>Casas de campo y apartamentos en Valledupar, Cesar. Vive experiencias inolvidables con Lorens Nieto.</p>
+        <div class="hero-buttons">
+          <a href="casas-campo.html" class="btn btn-accent btn-lg">Ver Propiedades</a>
+          <a href="servicios.html" class="btn btn-outline btn-lg" style="border-color:var(--white);color:var(--white);">Ver Servicios</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Propuesta de Valor -->
+    <section class="section">
+      <div class="container">
+        <div class="section-title">
+          <h2>¿Por qué elegirnos?</h2>
+          <p>Te ofrecemos la mejor experiencia en alquiler de propiedades</p>
+        </div>
+        <div class="value-cards">
+          <div class="value-card">
+            <div class="value-card-icon">🏡</div>
+            <h3>Propiedades Seleccionadas</h3>
+            <p>Cada propiedad es verificada y seleccionada para garantizar tu comodidad y satisfacción.</p>
+          </div>
+          <div class="value-card">
+            <div class="value-card-icon">🤝</div>
+            <h3>Atención Personalizada</h3>
+            <p>Te acompañamos en cada paso del proceso para que encuentres exactamente lo que buscas.</p>
+          </div>
+          <div class="value-card">
+            <div class="value-card-icon">📋</div>
+            <h3>Proceso Transparente</h3>
+            <p>Sin sorpresas. Precios claros, términos justos y comunicación directa en todo momento.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Casas de Campo Destacadas -->
+    <section class="section" style="background:var(--bg-light);">
+      <div class="container">
+        <div class="section-title">
+          <h2>Casas de Campo</h2>
+          <p>Escapate de la rutina y disfruta de la naturaleza</p>
+        </div>
+        <div id="featured-casas" class="cards-grid cols-3">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Cargando propiedades...</p>
+          </div>
+        </div>
+        <div class="text-center mt-4">
+          <a href="casas-campo.html" class="btn btn-primary">Ver todas las casas de campo</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Apartamentos Destacados -->
+    <section class="section">
+      <div class="container">
+        <div class="section-title">
+          <h2>Apartamentos</h2>
+          <p>Comodidad y estilo en el corazón de Valledupar</p>
+        </div>
+        <div id="featured-apartamentos" class="cards-grid cols-3">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Cargando propiedades...</p>
+          </div>
+        </div>
+        <div class="text-center mt-4">
+          <a href="apartamentos.html" class="btn btn-primary">Ver todos los apartamentos</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Servicios Destacados -->
+    <section class="section" style="background:var(--bg-light);">
+      <div class="container">
+        <div class="section-title">
+          <h2>Servicios</h2>
+          <p>Completa tu experiencia con servicios adicionales</p>
+        </div>
+        <div id="featured-services" class="cards-grid cols-3">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Cargando servicios...</p>
+          </div>
+        </div>
+        <div class="text-center mt-4">
+          <a href="servicios.html" class="btn btn-primary">Ver todos los servicios</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+      <h2>¿Listo para tu próxima experiencia?</h2>
+      <p>Contáctanos hoy y descubre todo lo que tenemos para ti en Valledupar.</p>
+      <a href="https://wa.me/573001234567?text=Hola%2C%20quiero%20informaci%C3%B3n" target="_blank" rel="noopener" class="btn btn-accent btn-lg">
+        💬 Contáctanos por WhatsApp
+      </a>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <div id="footer"></div>
+</body>
+</html>
