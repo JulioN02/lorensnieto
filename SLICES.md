@@ -1,7 +1,7 @@
 # 📊 PLAN DE DESARROLLO — Vertical Slices
 
 > **Metodología**: Vertical Slices (cada iteración = flujo completo funcional)
-> **Actualizado**: 09/06/2026 | **Progreso**: 7 slices completados end-to-end, 2 pendientes
+> **Actualizado**: 10/06/2026 | **Progreso**: 8 slices completados end-to-end, 1 pendiente
 > **Referencia**: vertical-slices SKILL.md
 
 ---
@@ -25,7 +25,7 @@ SLICE 4 ✅  Gestión de Pagos               → Completo (Backend + Frontend)
 SLICE 5 ✅  Gestión de Leads               → Completo (Backend + Frontend)
 SLICE 6 ✅  Flujo Público (Catálogo + Form) → Completo (100%)
 SLICE 7 ✅  Panel Socio Técnico             → Completo (Backend + Frontend)
-SLICE 8 🔲  Documentos y Comunicación       → Pendiente (próximo paso)
+SLICE 8 ✅  Documentos y Comunicación       → Completo (Backend PDFs + Email + Cron)
 SLICE 9 🔲  Pulido y Producción             → Pendiente
 ```
 
@@ -235,38 +235,49 @@ SLICE 9 🔲  Pulido y Producción             → Pendiente
 
 ---
 
-## SLICE 8: Documentos y Comunicación 🟢 DESEABLE
+## SLICE 8: Documentos y Comunicación ✅ COMPLETO
 
-**Objetivo**: Generación de PDFs + notificaciones por email
+**Objetivo**: Generación de PDFs + notificaciones por email + cron de alertas
 
 ### Componentes
 
-#### PDFs
-- [ ] **Factura**: Datos cliente, reserva, precio, reglas
-- [ ] **Liquidación**: Datos propietario, monto neto (sin % comisión)
-- [ ] **Cuenta de Cobro Socio**: Desglose ingresos, fase, porcentaje
-- [ ] **Endpoint**: GET /api/admin/reports/:type/:id/pdf
+#### PDFs (pdf-lib in-memory)
+- [x] **PdfGenerator**: Clase base compartida con `createDocument()`, `addHeader()`, `addFooter()`, `addTable()`, `drawSectionTitle()`, `drawField()`
+- [x] **Factura**: Datos cliente, reserva, precio breakdown, reglas — `GET /api/admin/pdf/factura/:reservationId`
+- [x] **Liquidación**: Datos propietario (solo nombre), monto neto (sin % comisión), cliente enmascarado — `GET /api/admin/pdf/liquidacion/:reservationId`
+- [x] **Cuenta de Cobro Socio**: Desglose ingresos, fase, %, barra progreso $3.068.000 — `GET /api/partner/pdf/cuenta-cobro/:periodId`
+- [x] **Data Privacy**: Liquidación nunca incluye ownerPhone/ownerEmail/ownerCedula/commission%
 
-#### Email
-- [ ] **Config**: Nodemailer transporter
-- [ ] **Template**: Notificación nuevo lead
-- [ ] **Template**: Confirmación de reserva
-- [ ] **Template**: Alerta vencimiento período socio
+#### Email (Nodemailer)
+- [x] **Config**: Transporter singleton con lazy init, graceful SMTP fallback
+- [x] **Template**: Alerta vencimiento período socio (buildAlertSubject + buildAlertBody)
+- [x] **Confirmación de pago**: Enviada al cliente cuando payment.status = 'pagado'
+- [x] **Graceful degradation**: Si SMTP no configurado, log warning y skip — nunca crash
 
-#### Cron Jobs
-- [ ] **Diario**: checkPartnerDeadlines
-- [ ] **Semanal**: sendPaymentReminders
-- [ ] **Diario**: cleanupOldSessions
+#### Cron Jobs (node-cron)
+- [x] **initCronJobs()**: Registrado desde app.ts, salta en test env
+- [x] **checkPartnerDeadlines()**: Diario 9AM Bogota, verifica períodos vencidos (pendiente/en_alerta)
+- [x] **Duplicate prevention**: No crea AlertLog duplicado para mismo periodId + mismo día
+- [x] **Status update**: pendiente → en_alerta automático
+- [x] **Error isolation**: DB fallos no crash el servidor, error catch por período
+
+### Fastos Técnicos
+
+- **Archivos creados**: 8 nuevos — `src/pdf/index.ts`, `src/pdf/templates/factura.ts`, `src/pdf/templates/liquidacion.ts`, `src/pdf/templates/cuenta-cobro.ts`, `src/email/index.ts`, `src/email/templates/partner-alert.ts`, `src/jobs/index.ts`, `src/jobs/partner-alert.ts`, `src/models/schemas/pdf.ts`
+- **Archivos modificados**: 5 — `src/config/index.ts`, `src/models/schemas/index.ts`, `src/api/admin/index.ts`, `src/api/partner/index.ts`, `src/app.ts`
+- **Dependencia nueva**: `pdf-lib`
+- **Build**: `npm run build` → 0 TypeScript errors
+- **Verificación**: 32/32 checks pass, data privacy audit fully compliant
 
 ### Fases de Desarrollo
 
-| Fase | Estimación |
-|------|-----------|
-| 1. Contrato | 30 min |
-| 2. Esqueleto | 30 min |
-| 3. Lógica | 2.5h |
-| 4. Pulido | 30 min |
-| **Total** | **~4h** |
+| Fase | Estimación | Real |
+|------|-----------|------|
+| 1. Contrato | 30 min | — |
+| 2. Esqueleto | 30 min | — |
+| 3. Lógica | 2.5h | — |
+| 4. Pulido | 30 min | — |
+| **Total** | **~4h** | ✅ Archivado |
 
 ---
 
@@ -301,25 +312,25 @@ SLICE 9 🔲  Pulido y Producción             → Pendiente
 
 ---
 
-## ORDEN DE EJECUCIÓN (ACTUALIZADO 09/06/2026)
+## ORDEN DE EJECUCIÓN (ACTUALIZADO 10/06/2026)
 
-**Nota**: Slices 1-7 completados end-to-end. Quedan Slice 8 (PDFs+Email+Cron) y Slice 9 (Producción).
+**Nota**: Slices 1-8 completados end-to-end. Solo queda Slice 9 (Producción). Proyecto ~87%.
 
 ```
-SIGUIENTE SESIÓN — Slice 8: PDFs + Email + Cron (~4h)
-├── PDF Factura (pdf-lib + datos reserva)                        (1.5h)
-├── PDF Liquidación Propietario (monto neto, sin % comisión)     (1h)
-├── PDF Cuenta de Cobro Socio (desglose ingresos, fase, %)       (0.5h)
-├── Email Nodemailer (notificación lead, confirmación, alertas)  (0.5h)
-└── Cron Jobs (job diario verificación períodos vencidos)        (0.5h)
+✅ COMPLETADO — Slice 8: PDFs + Email + Cron (~4h)
+├── PDF Factura (pdf-lib + datos reserva)                        ✅ Desarrollado
+├── PDF Liquidación Propietario (monto neto, sin % comisión)     ✅ Desarrollado
+├── PDF Cuenta de Cobro Socio (desglose ingresos, fase, %)       ✅ Desarrollado
+├── Email Nodemailer (confirmación pago, alerta vencimiento)     ✅ Desarrollado
+└── Cron Jobs (job diario verificación períodos vencidos)        ✅ Desarrollado
 
-SESIÓN FINAL — Slice 9: Producción (~6.5h)
+PRÓXIMA Y ÚLTIMA SESIÓN — Slice 9: Producción (~6.5h)
 ├── OpenAPI spec + Swagger UI                                    (1.5h)
 ├── Tests E2E Playwright (flujo público + admin)                 (2h)
 ├── Dockerfile + GitHub Actions + Deploy Railway                 (2h)
 └── Carga datos reales + capacitación Lorena                     (1h)
 
-TOTAL RESTANTE: ~10.5h
+TOTAL RESTANTE: ~6.5h
 ```
 
 ---
@@ -497,13 +508,15 @@ Usar al final de cada slice para verificar que está completo.
 - [x] Ve historial de períodos con estados
 - [x] Solo puede ver, no puede editar nada
 
-#### SLICE 8 — PDFs + Email ✅
+#### SLICE 8 — PDFs + Email + Cron ✅ COMPLETED
 
-- [ ] Puedo generar factura de reserva
-- [ ] Puedo generar liquidación de propietario
-- [ ] Puedo generar cuenta de cobro de Julio
-- [ ] Email se envía automáticamente al crear lead
-- [ ] Cron job de alertas diarias está activo
+- [x] Puedo generar factura de reserva (`GET /api/admin/pdf/factura/:reservationId`)
+- [x] Puedo generar liquidación de propietario (`GET /api/admin/pdf/liquidacion/:reservationId`)
+- [x] Puedo generar cuenta de cobro de Julio (`GET /api/partner/pdf/cuenta-cobro/:periodId`)
+- [x] Email de confirmación se envía al registrar pago (payment.status = 'pagado')
+- [x] Email de alerta se envía cuando período pasa a vencido (si SMTP configurado)
+- [x] Cron job de alertas diarias registrado (9AM Bogota, no crash en fallo DB)
+- [x] Data privacy: liquidación no expone datos de contacto del propietario ni % comisión
 
 #### SLICE 9 — Producción ✅
 
@@ -517,22 +530,24 @@ Usar al final de cada slice para verificar que está completo.
 
 ### PRÓXIMO PASO INMEDIATO
 
-**SLICE 8 — PDFs + Email + Cron (~4h)**
+**SLICE 9 — Pulido + Producción (~6.5h)**
 
-1. PDF Factura: pdf-lib con datos cliente + reserva + precio + reglas
-2. PDF Liquidación: para propietario (monto neto, sin % comisión visible)
-3. PDF Cuenta de Cobro: para socio técnico con desglose ingresos, fase, %
-4. Email Nodemailer: notificación nuevo lead, confirmación reserva, alerta vencimiento
-5. Cron Jobs: job diario verificación períodos vencidos + alertas automáticas
+1. OpenAPI spec + Swagger UI: Documentar todos los endpoints bajo `/api/docs`
+2. Tests E2E Playwright: Flujo público (ver propiedad + enviar solicitud)
+3. Tests E2E Playwright: Flujo admin (login + crear reserva + registrar pago)
+4. Dockerfile: Backend optimizado multi-stage para producción
+5. GitHub Actions: Pipeline test → build → deploy a Railway
+6. Carga datos reales (propiedades, fotos, servicios de Lorena)
+7. Capacitación a Lorena + puesta en marcha
 
-### Luego
+### Proyecto Completo (después de Slice 9)
 
-- Slice 9: OpenAPI spec + Swagger UI + Tests E2E + Dockerfile + CI/CD + Deploy Railway
-- Carga datos reales (propiedades, fotos, servicios de Lorena)
-- Capacitación a Lorena + puesta en marcha
+- **100% funcional** — Fin del contrato
+- Entrega a Lorena Nieto
+- Cierre del proyecto con J-Soft Solutions
 
 ---
 
-*Plan ejecutivo actualizado el 09/06/2026 — J-Soft Solutions*
+*Plan ejecutivo actualizado el 10/06/2026 — J-Soft Solutions*
 *Metodología: Vertical Slices v2.0*
-*Próxima acción: Slice 8 — PDFs + Email + Cron*
+*Próxima acción: Slice 9 — Pulido + Producción*

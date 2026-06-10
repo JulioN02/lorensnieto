@@ -10,6 +10,7 @@ import {
   leadNoteSchema,
   paymentCreateSchema,
   reservationCreateSchema,
+  pdfReservationParamsSchema,
 } from '../../models/schemas/index.js';
 import { requireAuth, requireRole } from '../../middleware/auth.js';
 import { uploadPropertyGallery, uploadServiceGallery } from '../../middleware/upload.js';
@@ -31,6 +32,10 @@ import {
   cancelReservationHandler,
   deleteReservationHandler,
 } from '../../controllers/index.js';
+
+import { createFactura } from '../../pdf/templates/factura.js';
+import { createLiquidacion } from '../../pdf/templates/liquidacion.js';
+import { sendEmail } from '../../email/index.js';
 
 export const adminRouter = Router();
 
@@ -511,6 +516,32 @@ adminRouter.post(
       },
     });
 
+    // Send confirmation email if payment status is 'pagado'
+    if (payment.status === 'pagado') {
+      const totalPaidAfter = totalPaid + Number(parsed.data.amount);
+      const pendingAfter = Number(reservation.priceTotal) - totalPaidAfter;
+
+      const emailSubject = `Confirmación de pago — Reserva ${reservation.id}`;
+      const emailBody = [
+        `=== CONFIRMACIÓN DE PAGO ===`,
+        ``,
+        `Reserva No.: ${reservation.id}`,
+        `Monto pagado: $${Number(parsed.data.amount).toLocaleString('es-CO')}`,
+        `Total pagado: $${totalPaidAfter.toLocaleString('es-CO')}`,
+        `Saldo pendiente: $${Math.max(0, pendingAfter).toLocaleString('es-CO')}`,
+        ``,
+        `Gracias por su pago.`,
+        `Si tiene alguna inquietud, no dude en contactarnos.`,
+        ``,
+        `Lorens Nieto — Sistema de Gestión Integral`,
+      ].join('\n');
+
+      // Graceful — do not fail the request if email fails
+      sendEmail(reservation.customerEmail, emailSubject, emailBody).catch((err) => {
+        console.error(`[EMAIL] Failed to send payment confirmation for reservation ${reservation.id}:`, err);
+      });
+    }
+
     res.status(201).json({ success: true, data: payment, message: 'Pago registrado exitosamente' });
   })
 );
@@ -573,5 +604,85 @@ adminRouter.get(
         partnerAmount: period ? Number(period.amountDue) : 0,
       },
     });
+  })
+);
+
+// ============================================
+// PDF GENERATION — Admin only
+// ============================================
+
+adminRouter.get(
+  '/pdf/factura/:reservationId',
+  requireRole('admin'),
+  asyncHandler(async (req, res): Promise<void> => {
+    const { reservationId } = pdfReservationParamsSchema.parse(req.params);
+
+    const reservation = await prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        property: true,
+        payments: { orderBy: { createdAt: 'asc' } },
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundError('Reserva');
+    }
+
+    try {
+      const pdfBytes = await createFactura(reservation as any);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="factura-${reservationId}.pdf"`);
+      res.setHeader('Content-Length', pdfBytes.length);
+      res.send(Buffer.from(pdfBytes));
+    } catch (err) {
+      console.error('[PDF] Error generating factura:', err);
+      res.status(500).json({
+        success: false,
+        error: 'Error al generar PDF',
+        code: 'PDF_GENERATION_ERROR',
+      });
+    }
+  })
+);
+
+adminRouter.get(
+  '/pdf/liquidacion/:reservationId',
+  requireRole('admin'),
+  asyncHandler(async (req, res): Promise<void> => {
+    const { reservationId } = pdfReservationParamsSchema.parse(req.params);
+
+    const reservation = await prisma.reservation.findUnique({
+      where: { id: reservationId },
+      include: {
+        property: true,
+        payments: { orderBy: { createdAt: 'asc' } },
+      },
+    });
+
+    if (!reservation) {
+      throw new NotFoundError('Reserva');
+    }
+
+    // Fetch commission percentage from settings
+    const settings = await prisma.settings.findFirst();
+    const commissionPct = Number(settings?.commissionPct ?? 0.1);
+
+    try {
+      const pdfBytes = await createLiquidacion(reservation as any, commissionPct);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="liquidacion-${reservationId}.pdf"`);
+      res.setHeader('Content-Length', pdfBytes.length);
+      res.send(Buffer.from(pdfBytes));
+    } catch (err) {
+      console.error('[PDF] Error generating liquidacion:', err);
+      res.status(500).json({
+        success: false,
+        error: 'Error al generar PDF',
+        code: 'PDF_GENERATION_ERROR',
+      });
+    }
   })
 );

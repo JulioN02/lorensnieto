@@ -28,3 +28,5 @@ export type { PaymentCreateInput } from './payment.js';
 
 export { partnerPeriodUpdateSchema, partnerSettingsUpdateSchema } from './partner.js';
 export type { PartnerPeriodUpdateInput, PartnerSettingsUpdateInput } from './partner.js';
+
+export { pdfReservationParamsSchema, pdfPeriodParamsSchema } from './pdf.js';

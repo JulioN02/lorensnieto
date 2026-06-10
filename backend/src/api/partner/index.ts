@@ -1,7 +1,9 @@
 import { Router } from 'express';
-import { asyncHandler } from '../../middleware/index.js';
+import { asyncHandler, NotFoundError } from '../../middleware/index.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { prisma } from '../../config/database.js';
+import { pdfPeriodParamsSchema } from '../../models/schemas/index.js';
+import { createCuentaCobro } from '../../pdf/templates/cuenta-cobro.js';
 
 export const partnerRouter = Router();
 
@@ -288,5 +290,80 @@ partnerRouter.put(
     });
 
     res.json({ success: true, data: updated, message: 'Configuración actualizada' });
+  })
+);
+
+// ============================================
+// PDF — Cuenta de Cobro
+// GET /api/partner/pdf/cuenta-cobro/:periodId
+// ============================================
+partnerRouter.get(
+  '/pdf/cuenta-cobro/:periodId',
+  asyncHandler(async (req, res): Promise<void> => {
+    const { periodId } = pdfPeriodParamsSchema.parse(req.params);
+
+    const period = await prisma.partnerPeriod.findUnique({
+      where: { id: periodId },
+    });
+
+    if (!period) {
+      throw new NotFoundError('Período');
+    }
+
+    // Calculate accumulated paid across all periods
+    const allPeriods = await prisma.partnerPeriod.findMany();
+    const totalAccumulated = allPeriods.reduce((sum, p) => sum + Number(p.amountPaid), 0);
+
+    // Calculate monthly breakdown (arrendamientos and servicios)
+    const monthStart = new Date(`${period.month}-01`);
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+
+    const [reservations, contractings] = await Promise.all([
+      prisma.reservation.findMany({
+        where: {
+          status: { in: ['confirmada', 'en_servicio', 'finalizada'] },
+          createdAt: { gte: monthStart, lte: monthEnd },
+        },
+      }),
+      prisma.contracting.findMany({
+        where: {
+          status: { in: ['confirmada', 'en_servicio', 'finalizada'] },
+          createdAt: { gte: monthStart, lte: monthEnd },
+        },
+      }),
+    ]);
+
+    const arrendamientos = reservations.reduce((sum, r) => sum + Number(r.priceTotal), 0);
+    const servicios = contractings.reduce((sum, c) => sum + Number(c.priceTotal), 0);
+
+    try {
+      const pdfBytes = await createCuentaCobro({
+        id: period.id,
+        month: period.month,
+        revenueTotal: Number(period.revenueTotal),
+        phase: period.phase,
+        pctApplied: Number(period.pctApplied),
+        amountDue: Number(period.amountDue),
+        amountPaid: Number(period.amountPaid),
+        status: period.status,
+        deadlineDate: period.deadlineDate,
+        accumulatedPaid: totalAccumulated,
+        targetAmount: 3068000,
+        arrendamientos,
+        servicios,
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="cuenta-cobro-${periodId}.pdf"`);
+      res.setHeader('Content-Length', pdfBytes.length);
+      res.send(Buffer.from(pdfBytes));
+    } catch (err) {
+      console.error('[PDF] Error generating cuenta-cobro:', err);
+      res.status(500).json({
+        success: false,
+        error: 'Error al generar PDF',
+        code: 'PDF_GENERATION_ERROR',
+      });
+    }
   })
 );

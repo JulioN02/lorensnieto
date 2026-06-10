@@ -83,6 +83,13 @@ app.use('/api/admin', adminRouter);
 // Rutas partner (requieren autenticación)
 app.use('/api/partner', partnerRouter);
 
+// ============================================
+// CRON JOBS
+// ============================================
+
+import { initCronJobs } from './jobs/index.js';
+initCronJobs();
+
 // Servir archivos subidos estáticamente
 import expressStatic from 'serve-static';
 import path from 'path';
