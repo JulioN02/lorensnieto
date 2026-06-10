@@ -18,3 +18,16 @@ export {
   getPartnerSettings,
   updatePartnerSettings,
 } from './partner.service'
+
+export {
+  getReportsOverview,
+  getRevenueByType,
+  getTopProperties,
+  getOccupancy,
+  getTopServices,
+} from './report.service'
+
+export {
+  getAdminSettings,
+  updateAdminSettings,
+} from './settings.service'

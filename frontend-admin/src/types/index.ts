@@ -17,3 +17,7 @@ export { PAYMENT_TYPES, PAYMENT_STATUS } from './payment'
 
 export type { PartnerSummary, PartnerPeriod, PartnerPeriodStatus, PartnerPhase, PartnerSettings, AlertLogItem } from './partner'
 export { PARTNER_PERIOD_STATUS, PARTNER_PERIOD_STATUS_CONFIG, PARTNER_PHASE } from './partner'
+
+export type { ReportSummary, RevenueByType, TopProperty, OccupancyRow, TopService } from './report'
+
+export type { AdminSettings, AdminSettingsForm } from './settings'

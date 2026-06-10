@@ -37,6 +37,29 @@ import { createFactura } from '../../pdf/templates/factura.js';
 import { createLiquidacion } from '../../pdf/templates/liquidacion.js';
 import { sendEmail } from '../../email/index.js';
 
+// ============================================
+// Date range helper for reports
+// ============================================
+function getDateRange(req: any): { startDate: Date; endDate: Date } {
+  const now = new Date();
+  const { startDate, endDate } = req.query;
+
+  if (startDate && endDate) {
+    return {
+      startDate: new Date(startDate as string),
+      endDate: new Date(endDate as string),
+    };
+  }
+
+  // Default: current month
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  return {
+    startDate: new Date(year, month, 1),
+    endDate: new Date(year, month + 1, 0, 23, 59, 59, 999),
+  };
+}
+
 export const adminRouter = Router();
 
 // Todas las rutas admin requieren autenticación
@@ -547,6 +570,281 @@ adminRouter.post(
 );
 
 // ============================================
+// REPORTS — Admin Reports (requireRole admin)
+// ============================================
+
+adminRouter.get(
+  '/reports/overview',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { startDate, endDate } = getDateRange(req);
+
+    const [totalProperties, totalServices, reservations, leads] =
+      await Promise.all([
+        prisma.property.count({ where: { active: true } }),
+        prisma.service.count({ where: { active: true } }),
+        prisma.reservation.findMany({
+          where: { createdAt: { gte: startDate, lte: endDate } },
+        }),
+        prisma.lead.findMany({
+          where: { createdAt: { gte: startDate, lte: endDate } },
+        }),
+      ]);
+
+    const reservationsByStatus: Record<string, number> = {};
+    for (const r of reservations) {
+      const status = r.status;
+      reservationsByStatus[status] = (reservationsByStatus[status] ?? 0) + 1;
+    }
+
+    const leadsByStatus: Record<string, number> = {};
+    for (const l of leads) {
+      const status = l.status;
+      leadsByStatus[status] = (leadsByStatus[status] ?? 0) + 1;
+    }
+
+    const revenueCurrentMonth = reservations
+      .filter((r) => r.status !== 'cancelada')
+      .reduce((sum, r) => sum + Number(r.priceTotal), 0);
+
+    res.json({
+      success: true,
+      data: {
+        totalProperties,
+        totalServices,
+        reservationsByStatus,
+        leadsByStatus,
+        revenueCurrentMonth,
+      },
+      timestamp: new Date().toISOString(),
+    });
+  })
+);
+
+adminRouter.get(
+  '/reports/by-type',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { startDate, endDate } = getDateRange(req);
+
+    const reservations = await prisma.reservation.findMany({
+      where: {
+        status: { in: ['confirmada', 'en_servicio', 'finalizada'] },
+        dateStart: { gte: startDate },
+        dateEnd: { lte: endDate },
+      },
+      include: { property: { select: { type: true } } },
+    });
+
+    const byType: Record<
+      string,
+      { type: string; revenue: number; reservationCount: number }
+    > = {};
+
+    for (const r of reservations) {
+      if (!r.property) continue;
+      const type = r.property.type;
+      if (!byType[type]) {
+        byType[type] = { type, revenue: 0, reservationCount: 0 };
+      }
+      byType[type].revenue += Number(r.priceTotal);
+      byType[type].reservationCount++;
+    }
+
+    // Ensure both types appear
+    for (const t of ['casa_campo', 'apartamento']) {
+      if (!byType[t]) {
+        byType[t] = { type: t, revenue: 0, reservationCount: 0 };
+      }
+    }
+
+    res.json({
+      success: true,
+      data: Object.values(byType),
+      timestamp: new Date().toISOString(),
+    });
+  })
+);
+
+adminRouter.get(
+  '/reports/by-property',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { startDate, endDate } = getDateRange(req);
+
+    const reservations = await prisma.reservation.findMany({
+      where: {
+        status: { in: ['confirmada', 'en_servicio', 'finalizada'] },
+        dateStart: { gte: startDate },
+        dateEnd: { lte: endDate },
+      },
+      include: { property: { select: { id: true, name: true, type: true } } },
+    });
+
+    const byProperty: Record<
+      string,
+      {
+        propertyId: string;
+        propertyName: string;
+        type: string;
+        reservationCount: number;
+        revenue: number;
+      }
+    > = {};
+
+    for (const r of reservations) {
+      if (!r.property) continue;
+      const key = r.property.id;
+      if (!byProperty[key]) {
+        byProperty[key] = {
+          propertyId: key,
+          propertyName: r.property.name,
+          type: r.property.type,
+          reservationCount: 0,
+          revenue: 0,
+        };
+      }
+      byProperty[key].reservationCount++;
+      byProperty[key].revenue += Number(r.priceTotal);
+    }
+
+    const sorted = Object.values(byProperty)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+
+    res.json({
+      success: true,
+      data: sorted,
+      timestamp: new Date().toISOString(),
+    });
+  })
+);
+
+adminRouter.get(
+  '/reports/occupancy',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { startDate, endDate } = getDateRange(req);
+    const totalNights = Math.ceil(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    const properties = await prisma.property.findMany({
+      where: { active: true },
+      include: {
+        reservations: {
+          where: {
+            status: { in: ['confirmada', 'en_servicio', 'finalizada'] },
+            dateStart: { gte: startDate },
+            dateEnd: { lte: endDate },
+          },
+        },
+      },
+    });
+
+    const occupancy = properties
+      .map((property) => {
+        let bookedNights = 0;
+        for (const r of property.reservations) {
+          const nights = Math.ceil(
+            (r.dateEnd.getTime() - r.dateStart.getTime()) /
+              (1000 * 60 * 60 * 24)
+          );
+          bookedNights += Math.max(0, nights);
+        }
+        const occupancyPct =
+          totalNights > 0
+            ? Math.round((bookedNights / totalNights) * 10000) / 100
+            : 0;
+
+        return {
+          propertyId: property.id,
+          propertyName: property.name,
+          propertyType: property.type,
+          availableNights: totalNights,
+          bookedNights,
+          occupancyPct,
+        };
+      })
+      .sort((a, b) => b.occupancyPct - a.occupancyPct);
+
+    res.json({
+      success: true,
+      data: occupancy,
+      timestamp: new Date().toISOString(),
+    });
+  })
+);
+
+adminRouter.get(
+  '/reports/by-service',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { startDate, endDate } = getDateRange(req);
+
+    const contractings = await prisma.contracting.findMany({
+      where: {
+        status: { in: ['confirmada', 'en_servicio', 'finalizada'] },
+        createdAt: { gte: startDate, lte: endDate },
+      },
+      include: {
+        services: {
+          include: {
+            service: {
+              select: {
+                id: true,
+                name: true,
+                classification: true,
+                price: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const byService: Record<
+      string,
+      {
+        serviceId: string;
+        serviceName: string;
+        classification: string;
+        contractingCount: number;
+        revenue: number;
+      }
+    > = {};
+
+    for (const c of contractings) {
+      for (const cs of c.services) {
+        const svc = cs.service;
+        if (!byService[svc.id]) {
+          byService[svc.id] = {
+            serviceId: svc.id,
+            serviceName: svc.name,
+            classification: svc.classification,
+            contractingCount: 0,
+            revenue: 0,
+          };
+        }
+        const entry = byService[svc.id]!;
+        entry.contractingCount++;
+        entry.revenue += Number(cs.price);
+      }
+    }
+
+    const sorted = Object.values(byService).sort(
+      (a, b) => b.revenue - a.revenue
+    );
+
+    res.json({
+      success: true,
+      data: sorted,
+      timestamp: new Date().toISOString(),
+    });
+  })
+);
+
+// ============================================
 // PARTNER — Solo Socio Técnico
 // ============================================
 
@@ -644,6 +942,54 @@ adminRouter.get(
         code: 'PDF_GENERATION_ERROR',
       });
     }
+  })
+);
+
+// ============================================
+// SETTINGS — Admin Configuration
+// ============================================
+
+adminRouter.get(
+  '/settings',
+  requireRole('admin'),
+  asyncHandler(async (_req, res) => {
+    const settings = await prisma.settings.findFirst();
+    res.json({ success: true, data: settings });
+  })
+);
+
+adminRouter.put(
+  '/settings',
+  requireRole('admin'),
+  asyncHandler(async (req, res) => {
+    const { partnerDeadlineDays, commissionPct, notificationEmail, rulesDocUrl } = req.body;
+
+    const existing = await prisma.settings.findFirst();
+
+    if (!existing) {
+      const created = await prisma.settings.create({
+        data: {
+          partnerDeadlineDays: partnerDeadlineDays ?? 5,
+          commissionPct: commissionPct ?? 0.1,
+          notificationEmail: notificationEmail ?? '',
+          rulesDocUrl: rulesDocUrl ?? '',
+        },
+      });
+      res.json({ success: true, data: created, message: 'Configuración guardada exitosamente' });
+      return;
+    }
+
+    const updated = await prisma.settings.update({
+      where: { id: existing.id },
+      data: {
+        ...(partnerDeadlineDays !== undefined && { partnerDeadlineDays }),
+        ...(commissionPct !== undefined && { commissionPct }),
+        ...(notificationEmail !== undefined && { notificationEmail }),
+        ...(rulesDocUrl !== undefined && { rulesDocUrl }),
+      },
+    });
+
+    res.json({ success: true, data: updated, message: 'Configuración guardada exitosamente' });
   })
 );
 
