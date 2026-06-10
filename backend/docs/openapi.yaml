@@ -1,0 +1,2943 @@
+openapi: "3.0.3"
+info:
+  title: Lorens Nieto — API REST
+  description: |
+    API del Sistema de Gestión Integral Lorens Nieto.
+    Empresa inmobiliaria en Valledupar, Cesar.
+
+    ## Roles
+    - **admin**: Administradora (Lorena Nieto) — acceso completo
+    - **partner**: Socio Técnico (Julio Nieto) — solo vista financiera
+
+    ## Autenticación
+    La API usa sesiones HTTP (cookie-based). El endpoint `POST /api/auth/login`
+    establece una cookie de sesión (`connect.sid`). Todas las rutas protegidas
+    requieren esta cookie.
+  version: "1.0.0"
+  contact:
+    name: Lorens Nieto
+    url: "https://lorensnieto.com"
+
+servers:
+  - url: "http://localhost:3000"
+    description: Desarrollo local
+  - url: "https://lorensnieto-production.up.railway.app"
+    description: Producción
+
+tags:
+  - name: Auth
+    description: Autenticación y sesión
+  - name: Public
+    description: Endpoints públicos (consulta de propiedades/servicios)
+  - name: Admin
+    description: Panel administrativo (requiere rol admin)
+  - name: Reports
+    description: Reportes financieros y de ocupación (requiere rol admin)
+  - name: Partner
+    description: Panel del socio técnico (requiere autenticación)
+
+# ============================================
+# SECURITY SCHEMES
+# ============================================
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: connect.sid
+      description: Cookie de sesión HTTP. Se obtiene al hacer login en POST /api/auth/login
+
+  # ============================================
+  # SCHEMAS
+  # ============================================
+  schemas:
+    # ---------- Generic Response ----------
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+        code:
+          type: string
+      required:
+        - success
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        data:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - success
+        - data
+
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    # ---------- Auth ----------
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: lorena@lorensnieto.com
+        password:
+          type: string
+          minLength: 1
+          example: "mi-contraseña"
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/UserRole"
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    # ---------- Enums ----------
+    UserRole:
+      type: string
+      enum: [admin, partner]
+
+    PropertyType:
+      type: string
+      enum: [casa_campo, apartamento]
+
+    ServiceClassification:
+      type: string
+      enum: [alimentacion, limpieza, otros]
+
+    LeadStatus:
+      type: string
+      enum: [nueva, revisada, convertida, descartada]
+
+    ReservationStatus:
+      type: string
+      enum: [pendiente, confirmada, en_servicio, finalizada, cancelada]
+
+    PaymentType:
+      type: string
+      enum: [abono, total]
+
+    PaymentStatus:
+      type: string
+      enum: [pendiente, pagado]
+
+    PartnerPeriodStatus:
+      type: string
+      enum: [pendiente, en_alerta, pagado_parcial, pagado, en_disputa]
+
+    PartnerPhase:
+      type: string
+      enum: [fase_1, fase_2]
+
+    # ---------- Property ----------
+    Property:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/PropertyType"
+        name:
+          type: string
+        description:
+          type: string
+        zone:
+          type: string
+        address:
+          type: string
+        capacity:
+          type: integer
+        rooms:
+          type: integer
+          nullable: true
+        priceNight:
+          type: number
+          format: double
+        amenities:
+          type: array
+          items:
+            type: string
+        rules:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        ownerName:
+          type: string
+        ownerCedula:
+          type: string
+        ownerPhone:
+          type: string
+        ownerEmail:
+          type: string
+          format: email
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/Media"
+        _count:
+          type: object
+          properties:
+            reservations:
+              type: integer
+
+    PropertyCreateRequest:
+      type: object
+      required:
+        - type
+        - name
+        - description
+        - zone
+        - address
+        - capacity
+        - priceNight
+        - amenities
+        - rules
+        - ownerName
+        - ownerCedula
+        - ownerPhone
+        - ownerEmail
+      properties:
+        type:
+          $ref: "#/components/schemas/PropertyType"
+        name:
+          type: string
+        description:
+          type: string
+        zone:
+          type: string
+        address:
+          type: string
+        capacity:
+          type: integer
+        rooms:
+          type: integer
+        priceNight:
+          type: number
+          format: double
+        amenities:
+          type: array
+          items:
+            type: string
+        rules:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        ownerName:
+          type: string
+        ownerCedula:
+          type: string
+        ownerPhone:
+          type: string
+        ownerEmail:
+          type: string
+          format: email
+
+    # ---------- Service ----------
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        classification:
+          $ref: "#/components/schemas/ServiceClassification"
+        type:
+          type: string
+        price:
+          type: number
+          format: double
+        rules:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/Media"
+
+    ServiceCreateRequest:
+      type: object
+      required:
+        - name
+        - description
+        - classification
+        - type
+        - price
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        classification:
+          $ref: "#/components/schemas/ServiceClassification"
+        type:
+          type: string
+        price:
+          type: number
+          format: double
+        rules:
+          type: array
+          items:
+            type: string
+        active:
+          type: boolean
+
+    # ---------- Media ----------
+    Media:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        entityType:
+          type: string
+          enum: [property, service]
+        entityId:
+          type: string
+        url:
+          type: string
+        mediaType:
+          type: string
+          enum: [img, video]
+        orderIndex:
+          type: integer
+
+    # ---------- Lead ----------
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        customerCedula:
+          type: string
+        customerPhone:
+          type: string
+        customerEmail:
+          type: string
+          format: email
+        dateInterest:
+          type: string
+          format: date
+          nullable: true
+        additionalServices:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: "#/components/schemas/LeadStatus"
+        notes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        property:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Property"
+        service:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Service"
+        leadNotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadNote"
+        reservation:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Reservation"
+
+    LeadCreateRequest:
+      type: object
+      required:
+        - customerName
+        - customerCedula
+        - customerPhone
+        - customerEmail
+      properties:
+        customerName:
+          type: string
+        customerCedula:
+          type: string
+        customerPhone:
+          type: string
+        customerEmail:
+          type: string
+          format: email
+        propertyId:
+          type: string
+          format: uuid
+        serviceId:
+          type: string
+          format: uuid
+        dateInterest:
+          type: string
+          format: date
+        additionalServices:
+          type: array
+          items:
+            type: string
+
+    LeadStatusUpdateRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/LeadStatus"
+        notes:
+          type: string
+
+    LeadNoteRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+
+    LeadNote:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        leadId:
+          type: string
+          format: uuid
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    # ---------- Reservation ----------
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        customerCedula:
+          type: string
+        customerPhone:
+          type: string
+        customerEmail:
+          type: string
+          format: email
+        dateStart:
+          type: string
+          format: date
+        dateEnd:
+          type: string
+          format: date
+        additionalServices:
+          type: array
+          items:
+            type: string
+        priceTotal:
+          type: number
+          format: double
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+        observations:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        property:
+          $ref: "#/components/schemas/Property"
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+        leadId:
+          type: string
+          format: uuid
+          nullable: true
+
+    ReservationCreateRequest:
+      type: object
+      required:
+        - propertyId
+        - dateStart
+        - dateEnd
+      properties:
+        propertyId:
+          type: string
+          format: uuid
+        dateStart:
+          type: string
+          format: date
+        dateEnd:
+          type: string
+          format: date
+        additionalServices:
+          type: array
+          items:
+            type: string
+        priceTotal:
+          type: number
+          format: double
+        observations:
+          type: string
+
+    ReservationUpdateRequest:
+      type: object
+      properties:
+        dateStart:
+          type: string
+          format: date
+        dateEnd:
+          type: string
+          format: date
+        additionalServices:
+          type: array
+          items:
+            type: string
+        priceTotal:
+          type: number
+          format: double
+        observations:
+          type: string
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+
+    CheckAvailabilityRequest:
+      type: object
+      required:
+        - propertyId
+        - dateStart
+        - dateEnd
+      properties:
+        propertyId:
+          type: string
+          format: uuid
+        dateStart:
+          type: string
+          format: date
+        dateEnd:
+          type: string
+          format: date
+
+    CalculatePriceRequest:
+      type: object
+      required:
+        - propertyId
+        - dateStart
+        - dateEnd
+      properties:
+        propertyId:
+          type: string
+          format: uuid
+        dateStart:
+          type: string
+          format: date
+        dateEnd:
+          type: string
+          format: date
+        additionalServices:
+          type: array
+          items:
+            type: string
+
+    # ---------- Payment ----------
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        reservationId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+        type:
+          $ref: "#/components/schemas/PaymentType"
+        status:
+          $ref: "#/components/schemas/PaymentStatus"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PaymentCreateRequest:
+      type: object
+      required:
+        - amount
+        - type
+        - status
+      properties:
+        amount:
+          type: number
+          format: double
+        type:
+          $ref: "#/components/schemas/PaymentType"
+        status:
+          $ref: "#/components/schemas/PaymentStatus"
+
+    # ---------- Partner Period ----------
+    PartnerPeriod:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        month:
+          type: string
+          pattern: "^\\d{4}-\\d{2}$"
+          example: "2026-06"
+        revenueTotal:
+          type: number
+          format: double
+        phase:
+          $ref: "#/components/schemas/PartnerPhase"
+        pctApplied:
+          type: number
+          format: double
+        amountDue:
+          type: number
+          format: double
+        amountPaid:
+          type: number
+          format: double
+        status:
+          $ref: "#/components/schemas/PartnerPeriodStatus"
+        deadlineDate:
+          type: string
+          format: date
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        disputeNotes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlertLog"
+
+    # ---------- Alert ----------
+    AlertLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        periodId:
+          type: string
+          format: uuid
+        amountPending:
+          type: number
+          format: double
+        triggeredAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ---------- Settings ----------
+    Settings:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        commissionPct:
+          type: number
+          format: double
+          description: Porcentaje de comisión del socio técnico
+        rulesDocUrl:
+          type: string
+          format: uri
+        notificationEmail:
+          type: string
+          format: email
+        partnerDeadlineDays:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SettingsUpdateRequest:
+      type: object
+      properties:
+        commissionPct:
+          type: number
+          format: double
+        notificationEmail:
+          type: string
+          format: email
+        partnerDeadlineDays:
+          type: integer
+          minimum: 1
+          maximum: 90
+        rulesDocUrl:
+          type: string
+          format: uri
+
+    # ---------- Dashboard ----------
+    Dashboard:
+      type: object
+      properties:
+        totalProperties:
+          type: integer
+        totalServices:
+          type: integer
+        pendingLeads:
+          type: integer
+        totalReservations:
+          type: integer
+
+    # ---------- Reports ----------
+    ReportsOverview:
+      type: object
+      properties:
+        totalProperties:
+          type: integer
+        totalServices:
+          type: integer
+        reservationsByStatus:
+          type: object
+          additionalProperties:
+            type: integer
+        leadsByStatus:
+          type: object
+          additionalProperties:
+            type: integer
+        revenueCurrentMonth:
+          type: number
+          format: double
+
+    RevenueByType:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/PropertyType"
+        revenue:
+          type: number
+          format: double
+        reservationCount:
+          type: integer
+
+    TopProperty:
+      type: object
+      properties:
+        propertyId:
+          type: string
+          format: uuid
+        propertyName:
+          type: string
+        type:
+          $ref: "#/components/schemas/PropertyType"
+        reservationCount:
+          type: integer
+        revenue:
+          type: number
+          format: double
+
+    OccupancyRow:
+      type: object
+      properties:
+        propertyId:
+          type: string
+          format: uuid
+        propertyName:
+          type: string
+        propertyType:
+          $ref: "#/components/schemas/PropertyType"
+        availableNights:
+          type: integer
+        bookedNights:
+          type: integer
+        occupancyPct:
+          type: number
+          format: double
+
+    TopService:
+      type: object
+      properties:
+        serviceId:
+          type: string
+          format: uuid
+        serviceName:
+          type: string
+        classification:
+          $ref: "#/components/schemas/ServiceClassification"
+        contractingCount:
+          type: integer
+        revenue:
+          type: number
+          format: double
+
+    # ---------- Partner Summary ----------
+    PartnerSummary:
+      type: object
+      properties:
+        period:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PartnerPeriod"
+        settings:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/Settings"
+        ingresos:
+          type: object
+          properties:
+            arrendamientos:
+              type: number
+              format: double
+            servicios:
+              type: number
+              format: double
+            total:
+              type: number
+              format: double
+        partnerAmount:
+          type: number
+          format: double
+        accumulated:
+          type: object
+          properties:
+            total:
+              type: number
+              format: double
+            target:
+              type: number
+              format: double
+            percent:
+              type: number
+              format: double
+        activeAlerts:
+          type: integer
+
+# ============================================
+# PATHS
+# ============================================
+paths:
+  # ============================================
+  # AUTH
+  # ============================================
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      description: Autentica al usuario y establece una cookie de sesión.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/UserProfile"
+        "400":
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Demasiados intentos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Cerrar sesión
+      description: Destruye la sesión actual y limpia la cookie.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Sesión cerrada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  message:
+                    type: string
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Perfil del usuario actual
+      description: Retorna la información del usuario autenticado.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Perfil del usuario
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ============================================
+  # PUBLIC
+  # ============================================
+  /api/public/properties:
+    get:
+      tags: [Public]
+      summary: Listar propiedades públicas
+      description: Retorna propiedades activas con paginación y filtros.
+      parameters:
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/PropertyType"
+          description: Filtrar por tipo
+        - name: zone
+          in: query
+          schema:
+            type: string
+          description: Filtrar por zona (búsqueda parcial)
+        - name: capacity
+          in: query
+          schema:
+            type: integer
+          description: Capacidad mínima
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Búsqueda por nombre, descripción o zona
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Número de página
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Elementos por página
+      responses:
+        "200":
+          description: Lista de propiedades
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Property"
+                  pagination:
+                    $ref: "#/components/schemas/PaginationInfo"
+
+  /api/public/properties/{id}:
+    get:
+      tags: [Public]
+      summary: Detalle de propiedad pública
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Detalle de la propiedad
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Property"
+        "404":
+          description: Propiedad no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/public/services:
+    get:
+      tags: [Public]
+      summary: Listar servicios públicos
+      description: Retorna servicios activos con paginación y filtros.
+      parameters:
+        - name: classification
+          in: query
+          schema:
+            $ref: "#/components/schemas/ServiceClassification"
+          description: Filtrar por clasificación
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Búsqueda por nombre o descripción
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Lista de servicios
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Service"
+                  pagination:
+                    $ref: "#/components/schemas/PaginationInfo"
+
+  /api/public/services/{id}:
+    get:
+      tags: [Public]
+      summary: Detalle de servicio público
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Detalle del servicio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Service"
+        "404":
+          description: Servicio no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/public/leads:
+    post:
+      tags: [Public]
+      summary: Enviar solicitud pública
+      description: Crea un lead desde el formulario de contacto público.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadCreateRequest"
+      responses:
+        "201":
+          description: Solicitud creada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Lead"
+                  message:
+                    type: string
+        "400":
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ============================================
+  # ADMIN — Profile & Dashboard
+  # ============================================
+  /api/admin/me:
+    get:
+      tags: [Admin]
+      summary: Perfil admin
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Perfil del admin
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/admin/dashboard:
+    get:
+      tags: [Admin]
+      summary: Dashboard
+      description: Estadísticas resumidas del panel principal.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Estadísticas del dashboard
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Dashboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ============================================
+  # ADMIN — Properties CRUD
+  # ============================================
+  /api/admin/properties:
+    get:
+      tags: [Admin]
+      summary: Listar propiedades (admin)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/PropertyType"
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Lista de propiedades
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Property"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Crear propiedad
+      description: Crea una nueva propiedad. Soporta subida de imágenes (multipart).
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PropertyCreateRequest"
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/PropertyCreateRequest"
+                - type: object
+                  properties:
+                    gallery:
+                      type: array
+                      items:
+                        type: string
+                        format: binary
+      responses:
+        "201":
+          description: Propiedad creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Property"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/properties/{id}:
+    get:
+      tags: [Admin]
+      summary: Detalle de propiedad (admin)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Detalle de propiedad
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Property"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Admin]
+      summary: Actualizar propiedad
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PropertyCreateRequest"
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/PropertyCreateRequest"
+                - type: object
+                  properties:
+                    gallery:
+                      type: array
+                      items:
+                        type: string
+                        format: binary
+      responses:
+        "200":
+          description: Propiedad actualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Property"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Admin]
+      summary: Eliminar propiedad
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Propiedad eliminada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ============================================
+  # ADMIN — Services CRUD
+  # ============================================
+  /api/admin/services:
+    get:
+      tags: [Admin]
+      summary: Listar servicios (admin)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: classification
+          in: query
+          schema:
+            $ref: "#/components/schemas/ServiceClassification"
+        - name: active
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Lista de servicios
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Service"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Crear servicio
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceCreateRequest"
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ServiceCreateRequest"
+                - type: object
+                  properties:
+                    gallery:
+                      type: array
+                      items:
+                        type: string
+                        format: binary
+      responses:
+        "201":
+          description: Servicio creado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Service"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/services/{id}:
+    get:
+      tags: [Admin]
+      summary: Detalle de servicio (admin)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Detalle de servicio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Service"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Admin]
+      summary: Actualizar servicio
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceCreateRequest"
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ServiceCreateRequest"
+                - type: object
+                  properties:
+                    gallery:
+                      type: array
+                      items:
+                        type: string
+                        format: binary
+      responses:
+        "200":
+          description: Servicio actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Service"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Admin]
+      summary: Eliminar servicio
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Servicio eliminado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ============================================
+  # ADMIN — Leads
+  # ============================================
+  /api/admin/leads:
+    get:
+      tags: [Admin]
+      summary: Listar leads
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/LeadStatus"
+      responses:
+        "200":
+          description: Lista de leads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Lead"
+                  unreadCount:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/leads/{id}:
+    get:
+      tags: [Admin]
+      summary: Detalle de lead
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Detalle del lead
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Lead"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/admin/leads/{id}/status:
+    patch:
+      tags: [Admin]
+      summary: Actualizar estado de lead
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadStatusUpdateRequest"
+      responses:
+        "200":
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Lead"
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/admin/leads/{id}/notes:
+    post:
+      tags: [Admin]
+      summary: Agregar nota a lead
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadNoteRequest"
+      responses:
+        "201":
+          description: Nota creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/LeadNote"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/admin/leads/{id}/convert:
+    post:
+      tags: [Admin]
+      summary: Convertir lead a reserva
+      description: Crea una reserva a partir de los datos del lead y marca el lead como convertido.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservationCreateRequest"
+      responses:
+        "201":
+          description: Lead convertido a reserva
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Reservation"
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ============================================
+  # ADMIN — Reservations CRUD
+  # ============================================
+  /api/admin/reservations:
+    get:
+      tags: [Admin]
+      summary: Listar reservas
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Lista de reservas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Reservation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Crear reserva
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservationCreateRequest"
+      responses:
+        "201":
+          description: Reserva creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Reservation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/reservations/{id}:
+    get:
+      tags: [Admin]
+      summary: Detalle de reserva
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Detalle de reserva
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Reservation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Admin]
+      summary: Actualizar reserva
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservationUpdateRequest"
+      responses:
+        "200":
+          description: Reserva actualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Reservation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Admin]
+      summary: Eliminar reserva
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Reserva eliminada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/admin/reservations/property/{propertyId}:
+    get:
+      tags: [Admin]
+      summary: Listar reservas por propiedad
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: propertyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Reservas de la propiedad
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Reservation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/reservations/check-availability:
+    post:
+      tags: [Admin]
+      summary: Verificar disponibilidad
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckAvailabilityRequest"
+      responses:
+        "200":
+          description: Resultado de disponibilidad
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      available:
+                        type: boolean
+                      conflictingReservations:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Reservation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/reservations/calculate-price:
+    post:
+      tags: [Admin]
+      summary: Calcular precio de reserva
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalculatePriceRequest"
+      responses:
+        "200":
+          description: Precio calculado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      nights:
+                        type: integer
+                      pricePerNight:
+                        type: number
+                        format: double
+                      totalPrice:
+                        type: number
+                        format: double
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/reservations/{id}/cancel:
+    put:
+      tags: [Admin]
+      summary: Cancelar reserva
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Reserva cancelada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Reservation"
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ============================================
+  # ADMIN — Payments
+  # ============================================
+  /api/admin/reservations/{id}/payments:
+    get:
+      tags: [Admin]
+      summary: Listar pagos de una reserva
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Lista de pagos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Payment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Admin]
+      summary: Registrar pago
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentCreateRequest"
+      responses:
+        "201":
+          description: Pago registrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Payment"
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Monto excede saldo pendiente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ============================================
+  # ADMIN — Reports
+  # ============================================
+  /api/admin/reports/overview:
+    get:
+      tags: [Reports]
+      summary: Resumen de reportes
+      description: Agregados generales: propiedades, servicios, reservas, leads e ingresos.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Fecha inicio (YYYY-MM-DD). Default: primer día del mes actual
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Fecha fin (YYYY-MM-DD). Default: último día del mes actual
+      responses:
+        "200":
+          description: Resumen de reportes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/ReportsOverview"
+                  timestamp:
+                    type: string
+                    format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/reports/by-type:
+    get:
+      tags: [Reports]
+      summary: Ingresos por tipo de propiedad
+      description: Agrupa ingresos por PropertyType (casa_campo, apartamento).
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Ingresos por tipo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RevenueByType"
+                  timestamp:
+                    type: string
+                    format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/reports/by-property:
+    get:
+      tags: [Reports]
+      summary: Top propiedades por ingresos
+      description: Retorna top 10 propiedades por ingresos en el período.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Top propiedades
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TopProperty"
+                  timestamp:
+                    type: string
+                    format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/reports/occupancy:
+    get:
+      tags: [Reports]
+      summary: Ocupación por propiedad
+      description: Calcula noches reservadas vs disponibles por propiedad.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Ocupación por propiedad
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OccupancyRow"
+                  timestamp:
+                    type: string
+                    format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/admin/reports/by-service:
+    get:
+      tags: [Reports]
+      summary: Top servicios más contratados
+      description: Retorna servicios ordenados por ingresos en el período.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Top servicios
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TopService"
+                  timestamp:
+                    type: string
+                    format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ============================================
+  # ADMIN — Settings
+  # ============================================
+  /api/admin/settings:
+    get:
+      tags: [Admin]
+      summary: Obtener configuración
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Configuración actual
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Settings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags: [Admin]
+      summary: Actualizar configuración
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsUpdateRequest"
+      responses:
+        "200":
+          description: Configuración actualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Settings"
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ============================================
+  # ADMIN — Partner (admin view)
+  # ============================================
+  /api/admin/partner/summary:
+    get:
+      tags: [Admin]
+      summary: Resumen del socio (admin)
+      description: Vista del resumen financiero del socio para la administradora.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Resumen del socio
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/PartnerSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ============================================
+  # ADMIN — PDF
+  # ============================================
+  /api/admin/pdf/factura/{reservationId}:
+    get:
+      tags: [Admin]
+      summary: Descargar factura PDF
+      description: Genera y descarga una factura en PDF para una reserva.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Archivo PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          description: Error al generar PDF
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/admin/pdf/liquidacion/{reservationId}:
+    get:
+      tags: [Admin]
+      summary: Descargar liquidación PDF
+      description: Genera y descarga una liquidación en PDF para una reserva.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: reservationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Archivo PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          description: Error al generar PDF
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ============================================
+  # PARTNER — Summary & Periods
+  # ============================================
+  /api/partner/summary:
+    get:
+      tags: [Partner]
+      summary: Resumen financiero del socio
+      description: Retorna ingresos del mes, período actual, progreso acumulado y alertas activas.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Resumen financiero
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/PartnerSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/partner/periods:
+    get:
+      tags: [Partner]
+      summary: Historial de períodos
+      description: Lista todos los períodos de facturación del socio.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Lista de períodos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PartnerPeriod"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/partner/periods/{id}:
+    get:
+      tags: [Partner]
+      summary: Detalle de período
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Detalle del período
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/PartnerPeriod"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/partner/periods/{id}/confirm-payment:
+    post:
+      tags: [Partner]
+      summary: Confirmar pago completo
+      description: Marca un período como pagado.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Pago confirmado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/PartnerPeriod"
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/partner/periods/{id}/partial-payment:
+    post:
+      tags: [Partner]
+      summary: Registrar pago parcial
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+              properties:
+                amount:
+                  type: number
+                  format: double
+                  description: Monto del pago parcial
+      responses:
+        "200":
+          description: Pago parcial registrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/PartnerPeriod"
+                  message:
+                    type: string
+        "400":
+          description: Monto inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/partner/periods/{id}/dispute:
+    post:
+      tags: [Partner]
+      summary: Disputar período
+      description: Marca un período como en disputa con notas.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        "200":
+          description: Período marcado en disputa
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/PartnerPeriod"
+                  message:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ============================================
+  # PARTNER — Alerts & Settings
+  # ============================================
+  /api/partner/alerts:
+    get:
+      tags: [Partner]
+      summary: Listar alertas
+      description: Retorna hasta 50 alertas recientes.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Lista de alertas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AlertLog"
+                  activeCount:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/partner/settings:
+    get:
+      tags: [Partner]
+      summary: Obtener configuración (partner)
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Configuración actual
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Settings"
+    put:
+      tags: [Partner]
+      summary: Actualizar configuración (partner)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsUpdateRequest"
+      responses:
+        "200":
+          description: Configuración actualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    $ref: "#/components/schemas/Settings"
+                  message:
+                    type: string
+
+  /api/partner/pdf/cuenta-cobro/{periodId}:
+    get:
+      tags: [Partner]
+      summary: Descargar cuenta de cobro PDF
+      description: Genera y descarga una cuenta de cobro en PDF para un período.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: periodId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Archivo PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          description: Error al generar PDF
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ============================================
+  # HEALTH
+  # ============================================
+  /api/health:
+    get:
+      tags: [Public]
+      summary: Health check
+      description: Verifica que el servidor esté funcionando.
+      responses:
+        "200":
+          description: Servidor funcionando
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: "ok"
+                      timestamp:
+                        type: string
+                        format: date-time
+                      environment:
+                        type: string
+
+# ============================================
+# REUSABLE RESPONSES
+# ============================================
+components:
+  responses:
+    Unauthorized:
+      description: No autenticado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: "No autenticado"
+    Forbidden:
+      description: No autorizado — se requiere rol admin
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: "Acceso denegado"
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: "Recurso no encontrado"
+            code: "NOT_FOUND"

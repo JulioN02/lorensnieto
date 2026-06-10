@@ -5,6 +5,10 @@ import compression from 'compression';
 import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import pg from 'pg';
+import fs from 'fs';
+import path from 'path';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'js-yaml';
 import { config } from './config/index.js';
 import { errorHandler, notFoundHandler, attachUser } from './middleware/index.js';
 
@@ -92,7 +96,6 @@ initCronJobs();
 
 // Servir archivos subidos estáticamente
 import expressStatic from 'serve-static';
-import path from 'path';
 app.use('/uploads', expressStatic(path.join(process.cwd(), config.upload.dir)));
 
 // Health check
@@ -106,6 +109,17 @@ app.get('/api/health', (_req, res) => {
     },
   });
 });
+
+// ============================================
+// SWAGGER UI — Documentación API (solo dev)
+// ============================================
+
+if (config.nodeEnv !== 'production') {
+  const swaggerDoc = YAML.load(
+    fs.readFileSync(path.join(process.cwd(), 'docs', 'openapi.yaml'), 'utf8')
+  ) as Record<string, unknown>;
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc));
+}
 
 // ============================================
 // ERROR HANDLING
