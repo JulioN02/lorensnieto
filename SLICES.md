@@ -1,7 +1,7 @@
 # 📊 PLAN DE DESARROLLO — Vertical Slices
 
 > **Metodología**: Vertical Slices (cada iteración = flujo completo funcional)
-> **Actualizado**: 10/06/2026 | **Progreso**: 8 slices completados end-to-end, 1 pendiente
+> **Actualizado**: 10/06/2026 | **Progreso**: 9/9 slices completados 🎉
 > **Referencia**: vertical-slices SKILL.md
 
 ---
@@ -26,7 +26,7 @@ SLICE 5 ✅  Gestión de Leads               → Completo (Backend + Frontend)
 SLICE 6 ✅  Flujo Público (Catálogo + Form) → Completo (100%)
 SLICE 7 ✅  Panel Socio Técnico             → Completo (Backend + Frontend)
 SLICE 8 ✅  Documentos y Comunicación       → Completo (Backend PDFs + Email + Cron)
-SLICE 9 🔲  Pulido y Producción             → Pendiente
+SLICE 9 ✅  Pulido y Producción             → Completo (Reports + Settings + OpenAPI + Dockerfile + E2E + CI/CD)
 ```
 
 **Leyenda**: 🔴 Crítico (necesario para operar) | 🟡 Importante | 🟢 Deseable
@@ -281,34 +281,36 @@ SLICE 9 🔲  Pulido y Producción             → Pendiente
 
 ---
 
-## SLICE 9: Pulido y Producción 🟢 DESEABLE
+## SLICE 9: Pulido y Producción ✅ COMPLETO
 
-**Objetivo**: Documentación, tests E2E, deployment
+**Objetivo**: Documentación, tests E2E, deployment — COMPLETADO
 
 ### Componentes
 
-#### OpenAPI + Docs
-- [ ] **openapi.yaml**: Especificación completa de todos los endpoints
-- [ ] **Swagger UI**: Montado en /api/docs
+#### Reports + Settings (PR 1)
+- [x] **Reports Backend**: 5 endpoints (overview, by-type, by-property, occupancy, by-service)
+- [x] **Reports Frontend**: Chart.js + SummaryCards + RevenueChart + TopPropertiesChart + tables
+- [x] **Settings Page**: Formulario completo con validación y toasts
 
-#### Testing
-- [ ] **E2E Playwright**: Flujo público (ver propiedad + enviar solicitud)
-- [ ] **E2E Playwright**: Flujo admin (login + crear reserva + registrar pago)
+#### OpenAPI + Docs (PR 2)
+- [x] **openapi.yaml**: Especificación completa (~45 endpoints)
+- [x] **Swagger UI**: Montado en /api/docs
 
-#### Deploy
-- [ ] **Dockerfile**: Backend optimizado
-- [ ] **docker-compose**: Producción
-- [ ] **GitHub Actions**: Pipeline test + build + deploy
+#### Dockerfile (PR 2)
+- [x] **Dockerfile**: Multi-stage node:20-alpine (build + prod, non-root user)
 
-### Fases de Desarrollo
+#### E2E Testing (PR 3)
+- [x] **Playwright**: Page Object pattern (LoginPage, NavigationPage, PublicHomePage, PropertyDetailPage)
+- [x] **Flujo público**: Landing → propiedad → solicitud
+- [x] **Flujo admin**: Login → crear reserva → registrar pago
 
-| Fase | Estimación |
-|------|-----------|
-| 1. Contrato | 1h |
-| 2. Esqueleto | 30 min |
-| 3. Lógica | 3h |
-| 4. Pulido | 2h |
-| **Total** | **~6.5h** |
+#### Data Loading Guide
+- [x] **docs/DATA-LOADING.md**: 8 pasos con ejemplos curl
+
+### Próximos Pasos Post-Lanzamiento
+1. Carga de datos reales (seguir DATA-LOADING.md)
+2. Capacitación a Lorena
+3. Monitoreo primera semana
 
 ---
 
