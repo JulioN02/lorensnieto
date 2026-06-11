@@ -96,7 +96,7 @@ initCronJobs();
 
 // Servir archivos subidos estáticamente
 import expressStatic from 'serve-static';
-app.use('/uploads', expressStatic(path.join(process.cwd(), config.upload.dir)));
+app.use('/uploads', expressStatic(path.resolve(__dirname, '..', config.upload.dir)));
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -116,7 +116,7 @@ app.get('/api/health', (_req, res) => {
 
 if (config.nodeEnv !== 'production') {
   const swaggerDoc = YAML.load(
-    fs.readFileSync(path.join(process.cwd(), 'docs', 'openapi.yaml'), 'utf8')
+    fs.readFileSync(path.join(__dirname, '..', 'docs', 'openapi.yaml'), 'utf8')
   ) as Record<string, unknown>;
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc));
 }

@@ -896,6 +896,39 @@ components:
         activeAlerts:
           type: integer
 
+  # ============================================
+  # REUSABLE RESPONSES
+  # ============================================
+  responses:
+    Unauthorized:
+      description: No autenticado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: "No autenticado"
+    Forbidden:
+      description: No autorizado — se requiere rol admin
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: "Acceso denegado"
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            error: "Recurso no encontrado"
+            code: "NOT_FOUND"
+
 # ============================================
 # PATHS
 # ============================================
@@ -2199,7 +2232,7 @@ paths:
     get:
       tags: [Reports]
       summary: Resumen de reportes
-      description: Agregados generales: propiedades, servicios, reservas, leads e ingresos.
+      description: "Agregados generales: propiedades, servicios, reservas, leads e ingresos."
       security:
         - cookieAuth: []
       parameters:
@@ -2208,13 +2241,13 @@ paths:
           schema:
             type: string
             format: date
-          description: Fecha inicio (YYYY-MM-DD). Default: primer día del mes actual
+          description: "Fecha inicio (YYYY-MM-DD). Default: primer día del mes actual"
         - name: endDate
           in: query
           schema:
             type: string
             format: date
-          description: Fecha fin (YYYY-MM-DD). Default: último día del mes actual
+          description: "Fecha fin (YYYY-MM-DD). Default: último día del mes actual"
       responses:
         "200":
           description: Resumen de reportes
@@ -2908,36 +2941,4 @@ paths:
                       environment:
                         type: string
 
-# ============================================
-# REUSABLE RESPONSES
-# ============================================
-components:
-  responses:
-    Unauthorized:
-      description: No autenticado
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
-          example:
-            success: false
-            error: "No autenticado"
-    Forbidden:
-      description: No autorizado — se requiere rol admin
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
-          example:
-            success: false
-            error: "Acceso denegado"
-    NotFound:
-      description: Recurso no encontrado
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ErrorResponse"
-          example:
-            success: false
-            error: "Recurso no encontrado"
-            code: "NOT_FOUND"
+
