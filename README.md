@@ -4,7 +4,7 @@ Sistema de gestión integral para empresa inmobiliaria en Valledupar, Colombia. 
 
 ## Estado del Proyecto
 
-**Desarrollo activo** — Backend API funcional, Frontend Admin en construcción.
+**Proyecto completado (10/06/2026)** — Slices 1-9 terminados (9/9). Ver [ROADMAP.md](./ROADMAP.md) y [SLICES.md](./SLICES.md) para el detalle por iteración.
 
 ## Stack Tecnológico
 
@@ -19,7 +19,12 @@ Sistema de gestión integral para empresa inmobiliaria en Valledupar, Colombia. 
 | Autenticación | express-session + bcrypt |
 | Validación | Zod |
 | Upload | multer + sharp |
-| Testing | Jest + Supertest |
+| PDFs | pdf-lib |
+| Email | nodemailer |
+| Tareas programadas | node-cron |
+| Testing API | Jest + Supertest |
+| Testing E2E | Playwright |
+| Infraestructura | Railway + Docker + GitHub Actions |
 
 ## Estructura del Proyecto
 
@@ -87,12 +92,14 @@ LeadNote (notas internas)
 | 0 | Fundamentos Backend — Express, Prisma, auth, middleware | ✅ |
 | 1 | Rutas Públicas — Catálogo de propiedades y servicios | ✅ |
 | 2 | Gestión Admin — CRUD propiedades y servicios con upload | ✅ |
-| 3 | Sitio Web Público | 🔲 |
-| 4 | Leads y Reservas | 🔲 |
-| 5 | Documentos PDF | 🔲 |
-| 6 | Panel Socio Técnico | 🔲 |
-| 7 | Métricas y Reportes | 🔲 |
-| 8 | Deploy y Pulido | 🔲 |
+| 3 | Sitio Web Público | ✅ |
+| 4 | Leads y Reservas | ✅ |
+| 5 | Documentos PDF | ✅ |
+| 6 | Panel Socio Técnico | ✅ |
+| 7 | Métricas y Reportes | ✅ |
+| 8 | Deploy y Pulido | ✅ |
+
+> Corresponde a los Slices 1-9 del plan vertical; ver [SLICES.md](./SLICES.md).
 
 ## Frontend Admin
 
@@ -102,17 +109,17 @@ LeadNote (notas internas)
 | Tailwind CSS configurado | ✅ |
 | Zustand store | ✅ |
 | React Router + layout base | ✅ |
-| Conexión con API | 🔲 |
-| Vistas completas | 🔲 |
+| Conexión con API | ✅ |
+| Vistas completas | ✅ |
 
 ## Frontend Público
 
 | Componente | Estado |
 |------------|--------|
 | Estructura HTML/CSS/JS base | ✅ |
-| Cliente API JavaScript | 🔲 |
-| Páginas de catálogo | 🔲 |
-| Formulario de solicitud | 🔲 |
+| Cliente API JavaScript | ✅ |
+| Páginas de catálogo | ✅ |
+| Formulario de solicitud | ✅ |
 
 ## Licencia
 
